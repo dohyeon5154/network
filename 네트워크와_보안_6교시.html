@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>네트워크와 보안 · 6교시 인터랙티브 강의</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#101A2E; --ink2:#39455E; --muted:#7B8699;
+  --paper:#E7EAF1; --card:#FFFFFF; --line:#D2D8E4; --line2:#E4E8F0;
+  --teal:#0E7C86; --coral:#C0433C; --amber:#A87708; --violet:#5647B8; --green:#1F7A55;
+  --r:14px;
+  --shadow:0 1px 2px rgba(16,26,46,.05), 0 8px 24px -12px rgba(16,26,46,.18);
+  --mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans:"IBM Plex Sans KR", system-ui, -apple-system, "Malgun Gothic", sans-serif;
+  --accent:var(--teal); --accent-l:#4FC3CD;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--sans); background:var(--paper); color:var(--ink);
+  height:100dvh; display:flex; flex-direction:column; overflow:hidden;
+  -webkit-font-smoothing:antialiased; line-height:1.6;
+}
+button{font-family:inherit;color:inherit}
+h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.02em;font-weight:600}
+p{margin:0}
+
+/* 노선도 */
+.rail{flex:0 0 auto;background:var(--card);border-bottom:1px solid var(--line);padding:10px 20px 6px;position:relative;z-index:20}
+.rail-inner{max-width:1180px;margin:0 auto;position:relative}
+.rail-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.rail-title b{color:var(--ink);font-weight:600}
+.stations{display:flex;position:relative;padding-top:12px}
+.seg{position:absolute;top:17px;height:3px;border-radius:2px}
+.station{flex:1;background:none;border:0;padding:0 0 4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;position:relative;z-index:2}
+.dot{width:13px;height:13px;border-radius:50%;background:var(--card);border:3px solid var(--stn,#B9C2D2);transition:transform .18s ease, background .18s ease}
+.station[aria-current="true"] .dot{transform:scale(1.5);background:var(--stn)}
+.station.done .dot{background:var(--stn)}
+.stn-label{font-size:11px;color:var(--muted);white-space:nowrap;font-weight:500;transition:color .18s}
+.station[aria-current="true"] .stn-label{color:var(--ink);font-weight:600}
+.stn-num{font-family:var(--mono);font-size:9.5px;color:#A6B0C2}
+.station[aria-current="true"] .stn-num{color:var(--stn)}
+.station:focus-visible{outline:2px solid var(--ink);outline-offset:3px;border-radius:6px}
+
+/* 슬라이드 */
+.viewport{flex:1 1 auto;overflow-y:auto;overflow-x:hidden}
+.slide{display:none;max-width:1180px;margin:0 auto;padding:26px 22px 108px}
+.slide.active{display:block;animation:rise .34s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--accent);text-transform:uppercase;font-weight:600}
+.eyebrow .bar{width:22px;height:2px;background:var(--accent);display:inline-block}
+h2.title{font-size:clamp(21px,3.3vw,32px);margin:9px 0 8px;font-weight:700}
+.goal{color:var(--ink2);font-size:14.5px;max-width:76ch;border-left:3px solid var(--accent);padding-left:12px}
+.goal b{color:var(--ink);font-weight:600}
+
+.tabs{display:flex;gap:6px;margin:20px 0 14px;flex-wrap:wrap}
+.tab{border:1px solid var(--line);background:var(--card);border-radius:100px;padding:7px 15px;font-size:13px;font-weight:500;color:var(--ink2);cursor:pointer;transition:.16s}
+.tab:hover{border-color:var(--accent);color:var(--accent)}
+.tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.tab:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.panel{display:none}
+.panel.on{display:block;animation:fade .25s ease both}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:18px}
+.grid2{display:grid;grid-template-columns:1.5fr 1fr;gap:14px;align-items:start}
+.grid-even{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+.caphead{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;font-weight:600}
+.hint{font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.55}
+.hint b{color:var(--ink2);font-weight:600}
+
+.ctrls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.btn{border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:9px;padding:8px 15px;font-size:13px;font-weight:600;cursor:pointer;transition:.16s}
+.btn:hover{background:var(--accent);border-color:var(--accent)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink2);border-color:var(--line)}
+.btn.ghost:hover{color:var(--accent);border-color:var(--accent);background:transparent}
+.btn.warn{background:var(--coral);border-color:var(--coral)}
+.btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.toggle{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2);border:1px solid var(--line);border-radius:9px;padding:7px 13px;cursor:pointer;background:var(--card)}
+.toggle input{accent-color:var(--coral);width:15px;height:15px;margin:0}
+.seg-ctrl{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--card)}
+.seg-ctrl button{border:0;background:transparent;padding:7px 13px;font-size:12.5px;cursor:pointer;color:var(--ink2);font-weight:500;border-right:1px solid var(--line2)}
+.seg-ctrl button:last-child{border-right:0}
+.seg-ctrl button[aria-pressed="true"]{background:var(--accent);color:#fff}
+
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat .k{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+.stat .v{font-family:var(--mono);font-size:22px;font-weight:600;line-height:1.15}
+.stat .u{font-size:12px;color:var(--muted)}
+.statrow{display:flex;gap:22px;flex-wrap:wrap}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line2);font-size:13px}
+.kv:last-child{border-bottom:0}
+.kv .k{color:var(--muted)}
+.kv .v{font-family:var(--mono);font-weight:500}
+.kv .v.chg{color:var(--coral);animation:pop .4s ease}
+.kv .v.fix{color:var(--teal)}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.13)}100%{transform:scale(1)}}
+
+svg{display:block;max-width:100%;height:auto}
+.svgwrap{width:100%;overflow:hidden}
+
+.term{font-family:var(--mono);font-size:11.5px;background:#0E1626;color:#9FB0CC;border-radius:9px;padding:12px 13px;line-height:1.72;overflow-x:auto;white-space:pre;min-height:150px}
+.term .c{color:#4E5D78}
+.term .h{color:#FFD66B}
+.term .g{color:#7FD1A0}
+.term .r{color:#FF8A80}
+
+.takeaway{margin-top:18px;border-radius:var(--r);background:var(--ink);color:#E9ECF3;padding:16px 18px;display:flex;gap:14px;align-items:flex-start}
+.takeaway .mark{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--accent-l);flex:0 0 auto;padding-top:3px;font-weight:600}
+.takeaway p{font-size:14px;line-height:1.65}
+.takeaway b{color:#fff;font-weight:600}
+.bridge{margin-top:10px;font-size:13px;color:var(--ink2);display:flex;align-items:center;gap:8px}
+.bridge .arrow{color:var(--accent);font-weight:700}
+
+.footbar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(255,255,255,.93);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:9px 20px}
+.footbar-inner{max-width:1180px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.foot-meta{font-size:12px;color:var(--muted)}
+.foot-meta b{color:var(--ink);font-weight:600}
+.navbtns{display:flex;gap:8px}
+
+/* 안전 고지 */
+.warnbox{margin-top:14px;border:1px solid rgba(192,67,60,.35);background:rgba(192,67,60,.07);border-radius:12px;padding:13px 15px;font-size:13px;color:#8E322C;display:flex;gap:11px}
+.warnbox .ic{flex:0 0 auto;font-size:16px;line-height:1.3}
+.warnbox b{color:#6E241F}
+
+/* 명령어 칩 */
+.cmdrow{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.cmd{font-family:var(--mono);font-size:11.5px;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:6px 11px;cursor:pointer;color:var(--ink2);transition:.15s}
+.cmd:hover{border-color:var(--accent);color:var(--accent)}
+.cmd[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.cmd:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.nodechips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.nchip{font-size:11.5px;border:1px solid var(--line);border-radius:100px;padding:4px 11px;color:var(--muted);background:var(--paper);transition:.2s}
+.nchip.hot{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.nchip.dim{opacity:.4}
+
+/* 목적지 버튼 (2교시) */
+.destrow{display:flex;gap:6px;flex-wrap:wrap}
+.dest{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:8px 12px;font-size:12.5px;cursor:pointer;text-align:left;transition:.15s}
+.dest:hover{border-color:var(--accent)}
+.dest[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.dest small{display:block;font-size:10.5px;opacity:.7;font-family:var(--mono)}
+.dest.probed{border-color:var(--accent)}
+.dest:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+/* 홉 눈 (3교시) */
+.eye{cursor:pointer}
+.hopcard{border:1px solid var(--line);border-radius:11px;padding:12px 13px;background:var(--card)}
+.hopcard .who{font-size:12px;color:var(--muted);margin-bottom:6px}
+.leak{font-family:var(--mono);font-size:12px;border-radius:8px;padding:9px 11px;word-break:break-all;line-height:1.6}
+.leak.open{background:rgba(192,67,60,.09);color:#8E322C;border:1px solid rgba(192,67,60,.3)}
+.leak.safe{background:rgba(31,122,85,.09);color:#1A6247;border:1px solid rgba(31,122,85,.3)}
+.leak.block{background:rgba(168,119,8,.1);color:#7A5706;border:1px solid rgba(168,119,8,.32)}
+
+/* 문(포트) 격자 (4교시) */
+.doors{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.door{border:1px solid var(--line);border-radius:11px;background:var(--card);padding:10px;cursor:pointer;text-align:left;transition:.16s;position:relative}
+.door:hover{border-color:var(--ink2)}
+.door.open{border-color:var(--coral);background:rgba(192,67,60,.05)}
+.door.sel{box-shadow:0 0 0 2.5px rgba(16,26,46,.16)}
+.door .p{font-family:var(--mono);font-size:15px;font-weight:600}
+.door .n{font-size:11.5px;color:var(--ink2);margin-top:1px}
+.door .s{font-family:var(--mono);font-size:10px;margin-top:5px;letter-spacing:.05em}
+.door.open .s{color:var(--coral);font-weight:600}
+.door:not(.open) .s{color:var(--muted)}
+.door .risk{position:absolute;top:9px;right:9px;font-size:9.5px;font-family:var(--mono);color:#fff;border-radius:4px;padding:1px 5px}
+.door:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.gauge{height:11px;background:var(--line2);border-radius:6px;overflow:hidden;margin:8px 0 4px}
+.gauge i{display:block;height:100%;border-radius:6px;transition:width .3s ease, background .3s}
+
+/* URL 게임 (5교시) */
+.urlbox{font-family:var(--mono);font-size:15px;background:#0E1626;color:#E7ECF5;border-radius:10px;padding:15px 16px;word-break:break-all;line-height:1.55}
+.urlbox .host{color:#FFD66B}
+.urlbox .own{background:rgba(255,214,107,.22);border-radius:3px;padding:1px 2px}
+.urlbox .path{color:#6C7B96}
+.parse{margin-top:12px}
+.parse .row{display:flex;gap:10px;font-size:12.5px;padding:5px 0;border-bottom:1px dashed var(--line2)}
+.parse .row span:first-child{width:96px;flex:0 0 auto;color:var(--muted);font-family:var(--mono);font-size:11px}
+.verdict{margin-top:12px;font-size:13.5px;border-radius:10px;padding:11px 13px;display:none}
+.verdict.show{display:block;animation:fade .25s ease both}
+.verdict.good{background:rgba(31,122,85,.1);border:1px solid rgba(31,122,85,.35);color:#1A6247}
+.verdict.miss{background:rgba(192,67,60,.09);border:1px solid rgba(192,67,60,.32);color:#96322C}
+.verdict.mid{background:rgba(168,119,8,.1);border:1px solid rgba(168,119,8,.34);color:#7A5706}
+
+/* 메일 (5교시) */
+.mail{border:1px solid var(--line);border-radius:11px;padding:11px 13px;background:var(--card);cursor:pointer;transition:.15s;margin-bottom:8px}
+.mail:hover{border-color:var(--accent)}
+.mail.sel{border-color:var(--accent);box-shadow:0 0 0 2.5px rgba(86,71,184,.13)}
+.mail .from{font-weight:600;font-size:13.5px}
+.mail .subj{font-size:12.5px;color:var(--ink2);margin-top:1px}
+.mail .addr{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:3px}
+.auth{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.aut{font-family:var(--mono);font-size:10.5px;border-radius:5px;padding:2px 7px;font-weight:600}
+.aut.pass{background:rgba(31,122,85,.12);color:#1A6247}
+.aut.fail{background:rgba(192,67,60,.12);color:#96322C}
+
+/* 도미노 (5교시) */
+.sites{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.site{border:1px solid var(--line);border-radius:10px;padding:10px 8px;text-align:center;background:var(--card);transition:.3s}
+.site .ic{font-size:18px}
+.site .nm{font-size:11.5px;margin-top:3px;font-weight:600}
+.site .st{font-family:var(--mono);font-size:9.5px;margin-top:4px;color:var(--muted)}
+.site.fallen{background:rgba(192,67,60,.09);border-color:var(--coral)}
+.site.fallen .st{color:var(--coral);font-weight:600}
+.site.held{background:rgba(31,122,85,.08);border-color:var(--green)}
+.site.held .st{color:var(--green);font-weight:600}
+
+/* 방어층 (6교시) */
+.layers{display:flex;flex-direction:column;gap:7px}
+.lay{border:1px solid var(--line);border-radius:11px;padding:11px 13px;background:var(--card);display:flex;align-items:center;gap:11px;transition:.25s}
+.lay.off{opacity:.5;border-style:dashed}
+.lay.stop{border-color:var(--green);background:rgba(31,122,85,.08);box-shadow:0 0 0 2.5px rgba(31,122,85,.14)}
+.lay.pass{border-color:var(--line2)}
+.lay .ic{width:32px;height:32px;flex:0 0 auto;border-radius:9px;display:grid;place-items:center;background:var(--paper);font-size:16px}
+.lay.stop .ic{background:var(--green);color:#fff}
+.lay .t{font-weight:600;font-size:13.5px}
+.lay .d{font-size:11.5px;color:var(--muted)}
+.lay .sw{margin-left:auto}
+.attackline{font-family:var(--mono);font-size:11.5px;color:var(--coral);margin:8px 0;min-height:18px}
+
+/* 체크리스트 (6교시) */
+.chk{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-bottom:1px dashed var(--line2);font-size:13px;cursor:pointer}
+.chk:last-child{border-bottom:0}
+.chk input{margin:3px 0 0;accent-color:var(--green);width:15px;height:15px;flex:0 0 auto}
+.chk .t{font-weight:500}
+.chk .d{font-size:11.5px;color:var(--muted)}
+.chk.done .t{color:var(--green)}
+
+/* 대응 순서 (6교시) */
+.opt{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--card);cursor:pointer;font-size:13px;text-align:left;width:100%;margin-bottom:7px;transition:.15s}
+.opt:hover{border-color:var(--accent)}
+.opt.right{border-color:var(--green);background:rgba(31,122,85,.08)}
+.opt.wrong{border-color:var(--coral);background:rgba(192,67,60,.07)}
+.opt small{display:block;font-size:11.5px;color:var(--muted);margin-top:3px}
+.opt:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+@media (max-width:760px){
+  .svgwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .svgwrap svg{min-width:560px}
+}
+@media (max-width:900px){
+  .grid2,.grid-even{grid-template-columns:1fr}
+  .doors{grid-template-columns:repeat(2,1fr)}
+  .sites{grid-template-columns:repeat(3,1fr)}
+  .stn-label{display:none}
+  .slide{padding:20px 15px 112px}
+  .rail{padding:8px 12px 4px}
+  .footbar-inner{flex-direction:column;align-items:stretch;gap:7px}
+  .foot-meta{order:2;text-align:center}
+  .navbtns{order:1;justify-content:space-between}
+  .navbtns .btn{flex:1}
+  .takeaway{flex-direction:column;gap:7px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;transition-duration:.001ms !important}
+}
+</style>
+</head>
+<body>
+
+<header class="rail">
+  <div class="rail-inner">
+    <div class="rail-title">
+      <span>네트워크와 보안 · 6교시 노선도</span>
+      <span><b id="phaseLabel">기 · 네트워크 이해하기</b></span>
+    </div>
+    <div class="stations" id="stations"></div>
+  </div>
+</header>
+
+<div class="viewport" id="viewport">
+<!-- ==================== 1교시 ==================== -->
+<section class="slide" id="s1" style="--accent:var(--teal);--accent-l:#4FC3CD">
+  <span class="eyebrow"><span class="bar"></span>기 · 1교시</span>
+  <h2 class="title">내 컴퓨터의 네트워크 신분증 캐내기</h2>
+  <p class="goal"><b>핵심 목표</b> — 남이 만든 그림이 아니라 <b>내 컴퓨터가 지금 실제로 쓰고 있는 값</b>을 확인하고,
+  <b>IP는 왜 안 바뀌고 MAC은 왜 매번 바뀌는지</b>를 눈으로 이해합니다.</p>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-tab="s1a">패킷 한 조각의 여정</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="s1b">명령어는 어디를 보여주나</button>
+  </div>
+
+  <div class="panel on" id="s1a">
+    <div class="card">
+      <div class="grid2">
+        <div>
+          <div class="caphead">한 구간씩 이동시켜 보세요</div>
+          <div class="svgwrap" id="s1stage"></div>
+          <div class="ctrls">
+            <button class="btn" id="s1next">한 구간 이동 →</button>
+            <button class="btn ghost" id="s1auto">자동 재생</button>
+            <button class="btn ghost" id="s1reset">처음으로</button>
+            <label class="toggle"><input type="checkbox" id="s1fail"> 통신사 라우터 A 고장</label>
+          </div>
+          <p class="hint">내 PC가 실제로 짐을 건네는 상대는 <b>공유기 한 대뿐</b>입니다. 그 뒤로는 라우터들이 릴레이합니다.</p>
+        </div>
+        <div>
+          <div class="caphead">패킷에 붙은 송장</div>
+          <div class="kv"><span class="k">보내는 곳 IP</span><span class="v fix" id="s1sip">192.168.0.10</span></div>
+          <div class="kv"><span class="k">받는 곳 IP</span><span class="v fix" id="s1dip">142.250.196.100</span></div>
+          <div class="kv"><span class="k">이번 구간 출발 MAC</span><span class="v" id="s1smac">—</span></div>
+          <div class="kv"><span class="k">이번 구간 도착 MAC</span><span class="v" id="s1dmac">—</span></div>
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line2)">
+            <div class="statrow">
+              <div class="stat"><span class="k">현재 위치</span><span class="v" id="s1pos" style="font-size:15px">내 PC</span></div>
+              <div class="stat"><span class="k">거친 구간</span><span class="v" id="s1hops">0<span class="u"> / 4</span></span></div>
+            </div>
+          </div>
+          <p class="hint" id="s1story">전송 버튼을 눌러 첫 구간을 이동해 보세요.</p>
+          <div style="margin-top:12px;padding:11px 12px;background:var(--paper);border-radius:10px;font-size:12.5px;line-height:1.6">
+            <b>IP = 도로명 주소</b> · 목적지까지 바뀌지 않습니다.<br>
+            <b>MAC = 이름표</b> · 바로 옆 장비에게 건네는 용도라 <b>구간마다 바뀝니다.</b>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="s1b">
+    <div class="card">
+      <div class="caphead">명령어를 눌러 보세요 · 그 명령이 네트워크의 어느 부분을 보여주는지 표시됩니다</div>
+      <div class="cmdrow" id="s1cmds"></div>
+      <div class="nodechips" id="s1chips"></div>
+      <div class="grid2">
+        <div class="term" id="s1term"></div>
+        <div>
+          <div class="caphead">이 명령이 답하는 질문</div>
+          <p style="font-size:13.5px;color:var(--ink2)" id="s1qa">위에서 명령어를 하나 골라 보세요.</p>
+          <p class="hint" id="s1why"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="takeaway">
+    <span class="mark">정리</span>
+    <p>데이터는 <b>쪼개져서(패킷)</b>, <b>변하지 않는 주소(IP)</b>와 <b>구간마다 바뀌는 이름표(MAC)</b>를 달고 이동합니다.
+    그리고 이 다섯 개 명령어면 <b>내 컴퓨터의 네트워크 상태 전부</b>를 확인할 수 있습니다.</p>
+  </div>
+  <p class="bridge"><span class="arrow">→</span> 그럼 이 길은 어디까지 이어질까요? 국내와 해외를 <b>홉 수와 시간으로 비교</b>해 봅니다.</p>
+</section>
+
+<!-- ==================== 2교시 ==================== -->
+<section class="slide" id="s2" style="--accent:var(--teal);--accent-l:#4FC3CD">
+  <span class="eyebrow"><span class="bar"></span>기 · 2교시</span>
+  <h2 class="title">인터넷 구조를 홉 수와 시간으로 재기</h2>
+  <p class="goal"><b>핵심 목표</b> — 인터넷이 구름이 아니라 <b>거리·홉 수·소유자가 있는 물리적 구조물</b>임을 확인하고,
+  그 규칙을 <b>깨는 예외 하나</b>를 찾아냅니다.</p>
+
+  <div class="card" style="margin-top:20px">
+    <div class="caphead">목적지를 눌러 경로를 추적해 보세요 · 오른쪽에 점이 하나씩 쌓입니다</div>
+    <div class="destrow" id="s2dests"></div>
+    <div class="grid2" style="margin-top:16px">
+      <div>
+        <div class="svgwrap" id="s2hops"></div>
+        <div class="statrow" style="margin-top:12px">
+          <div class="stat"><span class="k">홉 수</span><span class="v" id="s2hop">—</span></div>
+          <div class="stat"><span class="k">왕복 시간</span><span class="v" id="s2rtt">—</span></div>
+          <div class="stat"><span class="k">IP 개수</span><span class="v" id="s2ip">—</span></div>
+          <div class="stat"><span class="k">응답한 곳</span><span class="v" id="s2loc" style="font-size:14px">—</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="caphead">홉 수 ↔ 왕복 시간</div>
+        <div class="svgwrap" id="s2chart"></div>
+        <div class="ctrls">
+          <label class="toggle"><input type="checkbox" id="s2cdn"> 구글이 <b>CDN 없이</b> 미국까지 간다면</label>
+        </div>
+        <p class="hint" id="s2note">다섯 곳을 모두 추적하면 점들이 <b>직선에 가깝게</b> 늘어섭니다. 그 줄에서 혼자 벗어난 점이 오늘의 발견입니다.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="takeaway">
+    <span class="mark">정리</span>
+    <p>지연은 곧 <b>거리</b>이고 홉 수와 비례합니다. 예외가 있다면 그건 <b>목적지가 실제로는 가까이 있다</b>는 뜻(CDN)입니다.
+    그리고 <b>2번째 홉부터는 전부 남의 도로</b>입니다.</p>
+  </div>
+  <p class="bridge"><span class="arrow">→</span> 남의 도로를 지나는 동안, 내 데이터는 <b>그 도로 주인들에게 어떻게 보일까요?</b></p>
+</section>
+
+<!-- ==================== 3교시 ==================== -->
+<section class="slide" id="s3" style="--accent:var(--coral);--accent-l:#F19A94">
+  <span class="eyebrow"><span class="bar"></span>승 · 3교시</span>
+  <h2 class="title">그 길 위에서 내 데이터는 다 보인다</h2>
+  <p class="goal"><b>핵심 목표</b> — 2교시에서 센 홉 하나하나가 <b>내 데이터를 읽을 수 있는 자리</b>임을 확인하고,
+  자물쇠 아이콘이 <b>정확히 무엇을 보증하는지</b>를 구분합니다.</p>
+
+  <div class="card" style="margin-top:20px">
+    <div class="caphead">로그인 정보를 전송합니다 · 홉을 눌러 그 자리에서 무엇이 보이는지 확인하세요</div>
+    <div class="ctrls" style="margin:0 0 14px">
+      <div class="seg-ctrl" id="s3proto">
+        <button data-v="http" aria-pressed="true">http:// 로 접속</button>
+        <button data-v="https" aria-pressed="false">https:// 로 접속</button>
+      </div>
+      <label class="toggle"><input type="checkbox" id="s3mitm"> 카페 공용 와이파이에 <b>가짜 접속점</b>이 있다</label>
+    </div>
+    <div class="grid2">
+      <div>
+        <div class="svgwrap" id="s3stage"></div>
+        <p class="hint" id="s3note"></p>
+      </div>
+      <div>
+        <div class="hopcard">
+          <div class="caphead" style="margin-bottom:6px" id="s3sel">홉을 선택하세요</div>
+          <div class="who" id="s3who">—</div>
+          <div class="leak safe" id="s3leak">홉을 누르면 그 자리에서 보이는 내용이 표시됩니다.</div>
+          <p class="hint" id="s3can"></p>
+        </div>
+        <div style="margin-top:12px;padding:12px;background:var(--paper);border-radius:11px;font-size:12.5px;line-height:1.65">
+          <b>암호화</b>는 <b>내용</b>을 봉합니다.<br>
+          <b>인증서</b>는 <b>상대가 진짜인지</b>를 보증합니다.<br>
+          자물쇠는 “안전한 사이트”가 아니라 <b>“봉해진 연결”</b>이라는 뜻입니다.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="takeaway">
+    <span class="mark">정리</span>
+    <p>http로 보낸 것은 <b>지나는 모든 홉에서 읽힙니다.</b> https는 내용을 봉하고,
+    가짜 접속점을 만나면 <b>인증서가 경고를 띄워 대신 막아 줍니다.</b> 그 경고를 무시하고 넘기는 순간 방어가 사라집니다.</p>
+  </div>
+  <p class="bridge"><span class="arrow">→</span> 지나가는 길이 위험하다면, <b>내 쪽에 열려 있는 문</b>은 몇 개일까요?</p>
+</section>
+<!-- ==================== 4교시 ==================== -->
+<section class="slide" id="s4" style="--accent:var(--amber);--accent-l:#E7BC5A">
+  <span class="eyebrow"><span class="bar"></span>전 · 4교시</span>
+  <h2 class="title">문은 몇 개나 열려 있나 — 포트와 공격면</h2>
+  <p class="goal"><b>핵심 목표</b> — 하나의 IP에 달린 <b>문(포트)</b>을 직접 열고 닫으며,
+  <b>안 쓰는 문을 닫는 것</b>이 왜 가장 값싼 방어인지 숫자로 확인합니다.</p>
+
+  <div class="card" style="margin-top:20px">
+    <div class="grid2">
+      <div>
+        <div class="caphead">우리 집 네트워크의 문 8개 · 눌러서 열고 닫아 보세요</div>
+        <div class="doors" id="s4doors"></div>
+        <div class="ctrls">
+          <label class="toggle"><input type="checkbox" id="s4fwd"> 공유기에서 <b>포트포워딩</b>을 켜 인터넷에 공개</label>
+          <button class="btn ghost" id="s4safe">권장 상태로 되돌리기</button>
+        </div>
+      </div>
+      <div>
+        <div class="caphead">공격면 점수</div>
+        <div class="statrow">
+          <div class="stat"><span class="k">열린 문</span><span class="v" id="s4open">0<span class="u"> / 8</span></span></div>
+          <div class="stat"><span class="k">밖에서 두드릴 수 있는 문</span><span class="v" id="s4ext" style="color:var(--coral)">0</span></div>
+          <div class="stat"><span class="k">위험도</span><span class="v" id="s4score">0</span></div>
+        </div>
+        <div class="gauge"><i id="s4bar" style="width:0%;background:var(--green)"></i></div>
+        <div style="font-size:12.5px;font-weight:600" id="s4grade">—</div>
+
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line2)">
+          <div class="caphead" id="s4selname">문을 하나 선택하세요</div>
+          <p style="font-size:13px;color:var(--ink2)" id="s4seldesc">각 문이 무엇에 쓰이는지, 열려 있으면 무엇이 가능한지 보여줍니다.</p>
+          <p class="hint" id="s4seladv"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="warnbox">
+      <span class="ic">⚠</span>
+      <div><b>실습 전 반드시 확인</b> — 포트 확인은 <b>내 소유 기기에만</b> 허용됩니다.
+      실습 대상은 <span style="font-family:var(--mono)">127.0.0.1</span>(내 PC 자신)과 <b>본인 공유기</b>뿐입니다.
+      남의 서버·회사망·공용 와이파이를 대상으로 하면 <b>정보통신망법 위반</b>입니다.</div>
+    </div>
+  </div>
+
+  <div class="takeaway">
+    <span class="mark">정리</span>
+    <p>문이 많을수록 <b>잠금장치가 고장 난 문이 하나쯤 있을 확률</b>도 커집니다. 방어의 절반은
+    새 장비를 사는 게 아니라 <b>안 쓰는 문을 닫는 일</b>입니다. 특히 편하려고 켠 포트포워딩 하나가
+    집 안 기기를 통째로 인터넷에 공개합니다.</p>
+  </div>
+  <p class="bridge"><span class="arrow">→</span> 그런데 문을 다 잠가도 뚫립니다. <b>내가 직접 문을 열어 주기</b> 때문입니다.</p>
+</section>
+
+<!-- ==================== 5교시 ==================== -->
+<section class="slide" id="s5" style="--accent:var(--violet);--accent-l:#AEA3F2">
+  <span class="eyebrow"><span class="bar"></span>전 · 5교시</span>
+  <h2 class="title">가장 약한 고리는 사람</h2>
+  <p class="goal"><b>핵심 목표</b> — 기술적으로 아무 문제가 없어도 뚫리는 경로를 확인합니다.
+  1교시의 <b>DNS(전화번호부)</b>가 어떻게 무기가 되는지를 직접 판별해 봅니다.</p>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-tab="s5a">① 진짜 주소 찾기</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="s5b">② 보낸 사람은 누구인가</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="s5c">③ 같은 열쇠, 다섯 개의 문</button>
+  </div>
+
+  <div class="panel on" id="s5a">
+    <div class="card">
+      <div class="caphead">이 주소는 진짜일까요? · 판단한 뒤 눌러 보세요</div>
+      <div class="urlbox" id="s5url">—</div>
+      <div class="ctrls">
+        <button class="btn" id="s5real">진짜다</button>
+        <button class="btn warn" id="s5fake">가짜다</button>
+        <button class="btn ghost" id="s5next2" disabled>다음 문제 →</button>
+        <span class="hint" style="margin:0">점수 <b id="s5score">0 / 0</b></span>
+      </div>
+      <div class="verdict" id="s5v"></div>
+      <div class="parse" id="s5parse" style="display:none"></div>
+      <p class="hint"><b>읽는 법</b> — 주소창에서 <span style="font-family:var(--mono)">https://</span> 다음부터
+      <b>첫 번째 단독 슬래시(/) 앞까지</b>가 호스트이고, 그 호스트의 <b>마지막 두 조각</b>이 진짜 주인입니다.
+      그 앞에 무슨 글자를 붙이든 주인은 바뀌지 않습니다.</p>
+    </div>
+  </div>
+
+  <div class="panel" id="s5b">
+    <div class="card">
+      <div class="grid2">
+        <div>
+          <div class="caphead">받은 편지함 · 메일을 눌러 원본을 확인하세요</div>
+          <div id="s5mails"></div>
+        </div>
+        <div>
+          <div class="caphead">원본 보기 (헤더)</div>
+          <div class="term" id="s5hdr" style="min-height:130px">메일을 선택하세요.</div>
+          <div class="auth" id="s5auth"></div>
+          <div class="verdict" id="s5mv" style="margin-top:12px"></div>
+          <p class="hint"><b>표시 이름은 아무나 적을 수 있습니다.</b> 봉투 겉면에 손으로 쓴 글씨와 같습니다.
+          SPF·DKIM·DMARC는 그 글씨가 진짜인지 검사한 <b>결과 도장</b>입니다.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="s5c">
+    <div class="card">
+      <div class="caphead">다섯 곳에 같은 비밀번호를 쓰고 있습니다</div>
+      <div class="sites" id="s5sites"></div>
+      <div class="ctrls">
+        <button class="btn warn" id="s5breach">쇼핑몰에서 비밀번호 유출 발생</button>
+        <button class="btn ghost" id="s5reset3">초기화</button>
+        <label class="toggle"><input type="checkbox" id="s5mfa"> 모든 계정에 <b>2단계 인증</b> 켜기</label>
+      </div>
+      <div class="statrow" style="margin-top:14px">
+        <div class="stat"><span class="k">뚫린 계정</span><span class="v" id="s5fall" style="color:var(--coral)">0<span class="u"> / 5</span></span></div>
+        <div class="stat"><span class="k">막아낸 계정</span><span class="v" id="s5hold" style="color:var(--green)">0<span class="u"> / 5</span></span></div>
+      </div>
+      <p class="hint" id="s5dnote">유출은 <b>내가 잘못하지 않아도</b> 일어납니다. 문제는 그 다음입니다 — 열쇠 하나가 문 다섯 개를 엽니다.</p>
+    </div>
+  </div>
+
+  <div class="takeaway">
+    <span class="mark">정리</span>
+    <p>사람이 읽는 건 주소 전체가 아니라 <b>눈에 띄는 몇 글자</b>이고, 메일의 <b>보낸 사람 이름은 아무나 적을 수 있습니다.</b>
+    그래서 비밀번호를 아무리 복잡하게 만드는 것보다 <b>2단계 인증 하나가 훨씬 효과적</b>입니다.</p>
+  </div>
+  <p class="bridge"><span class="arrow">→</span> 위험은 다 봤습니다. 이제 <b>오늘 당장 무엇을 할지</b> 정리합니다.</p>
+</section>
+
+<!-- ==================== 6교시 ==================== -->
+<section class="slide" id="s6" style="--accent:var(--green);--accent-l:#5FC59A">
+  <span class="eyebrow"><span class="bar"></span>결 · 6교시</span>
+  <h2 class="title">그래서 나는 무엇을 해야 하나</h2>
+  <p class="goal"><b>핵심 목표</b> — 3~5교시에서 본 위험을 <b>오늘 실행할 수 있는 점검 항목</b>으로 바꾸고,
+  <b>어떤 방어 한 겹도 모든 공격을 막지 못한다</b>는 것을 확인합니다.</p>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-tab="s6a">① 겹쳐 쌓기 (심층 방어)</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="s6b">② 내 환경 점검하기</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="s6c">③ 당했다면, 순서</button>
+  </div>
+
+  <div class="panel on" id="s6a">
+    <div class="card">
+      <div class="grid2">
+        <div>
+          <div class="caphead">방어 네 겹 · 스위치를 꺼 보며 어떤 공격이 통과하는지 확인하세요</div>
+          <div class="layers" id="s6layers"></div>
+          <div class="attackline" id="s6line"></div>
+        </div>
+        <div>
+          <div class="caphead">공격을 하나 골라 실행</div>
+          <div class="destrow" id="s6attacks" style="flex-direction:column"></div>
+          <div class="verdict" id="s6v" style="margin-top:14px"></div>
+          <p class="hint" id="s6note">네 가지 공격을 <b>모두</b> 시험해 보세요. 한 겹만으로 전부 막을 수 있는 방어는 없습니다.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="s6b">
+    <div class="card">
+      <div class="grid2">
+        <div>
+          <div class="caphead">가정·소규모 사무실 기본 점검 12항목</div>
+          <div id="s6chk"></div>
+        </div>
+        <div>
+          <div class="caphead">내 점수</div>
+          <div class="statrow">
+            <div class="stat"><span class="k">완료</span><span class="v" id="s6done">0<span class="u"> / 12</span></span></div>
+            <div class="stat"><span class="k">등급</span><span class="v" id="s6grade" style="font-size:17px">시작 전</span></div>
+          </div>
+          <div class="gauge"><i id="s6bar" style="width:0%;background:var(--green)"></i></div>
+          <p class="hint" id="s6cnote">체크는 이 화면에만 남고 어디에도 저장되지 않습니다. 수업 중에 실제로 켜 보고 체크하세요.</p>
+          <div style="margin-top:14px;padding:12px;background:var(--paper);border-radius:11px;font-size:12.5px;line-height:1.65">
+            <b>왜 업데이트가 1순위인가</b><br>
+            대부분의 침해는 새로운 기술이 아니라 <b>이미 패치가 나왔는데 적용하지 않은 곳</b>을 노립니다.
+            자동 업데이트를 켜는 것만으로 상당수가 사라집니다.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="s6c">
+    <div class="card">
+      <div class="caphead">상황 · 화면에 이상한 창이 뜨고 파일 이름이 전부 바뀌었습니다. 가장 먼저 할 일은?</div>
+      <div id="s6opts" style="margin-top:12px"></div>
+      <div class="verdict" id="s6iv"></div>
+      <div id="s6order" style="display:none;margin-top:16px">
+        <div class="caphead">올바른 순서</div>
+        <div class="svgwrap" id="s6steps"></div>
+        <p class="hint">불이 나면 <b>대피가 먼저</b>이고 원인 규명은 나중입니다. 당황해서 재부팅하거나 포맷하면
+        <b>증거와 복구 단서가 함께 사라집니다.</b> 신고는 <b>한국인터넷진흥원 118</b>(국번 없이)입니다.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="takeaway">
+    <span class="mark">6교시의 결론</span>
+    <p>완벽한 방어는 없습니다. 그래서 <b>하나가 뚫려도 다음이 버티게 겹쳐 쌓습니다.</b>
+    오늘 배운 것 중 가장 값싸고 효과 큰 세 가지는 <b>자동 업데이트 · 2단계 인증 · 안 쓰는 문 닫기</b>입니다.</p>
+  </div>
+</section>
+
+</div><!-- /viewport -->
+
+<footer class="footbar">
+  <div class="footbar-inner">
+    <div class="navbtns">
+      <button class="btn ghost" id="prevBtn">← 이전 교시</button>
+      <button class="btn" id="nextBtn">다음 교시 →</button>
+    </div>
+    <div class="foot-meta"><b id="footTitle">1교시 · 내 컴퓨터의 네트워크 신분증 캐내기</b> &nbsp;·&nbsp; 50분 수업 + 10분 휴식 &nbsp;·&nbsp; ← → 키로 이동</div>
+  </div>
+</footer>
+<script>
+(function(){
+"use strict";
+const $=(s,r)=>(r||document).querySelector(s);
+const $$=(s,r)=>Array.prototype.slice.call((r||document).querySelectorAll(s));
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const SVGNS="http://www.w3.org/2000/svg";
+function el(tag,attrs,txt){const e=document.createElementNS(SVGNS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(txt!=null)e.textContent=txt;return e;}
+
+/* ============ 덱 내비게이션 ============ */
+const SLIDES=[
+ {id:'s1',short:'신분증',color:'#0E7C86',phase:'기 · 네트워크 이해하기',title:'1교시 · 내 컴퓨터의 네트워크 신분증 캐내기'},
+ {id:'s2',short:'구조',  color:'#0E7C86',phase:'기 · 네트워크 이해하기',title:'2교시 · 인터넷 구조를 홉 수와 시간으로 재기'},
+ {id:'s3',short:'노출',  color:'#C0433C',phase:'승 · 길 위의 위험',      title:'3교시 · 그 길 위에서 내 데이터는 다 보인다'},
+ {id:'s4',short:'문',    color:'#A87708',phase:'전 · 어디로 들어오나',    title:'4교시 · 문은 몇 개나 열려 있나'},
+ {id:'s5',short:'사람',  color:'#5647B8',phase:'전 · 어디로 들어오나',    title:'5교시 · 가장 약한 고리는 사람'},
+ {id:'s6',short:'방어',  color:'#1F7A55',phase:'결 · 무엇을 지킬 것인가', title:'6교시 · 그래서 나는 무엇을 해야 하나'}
+];
+let cur=0; const stationsEl=$('#stations'); const lifecycle={};
+(function(){
+  for(let i=0;i<5;i++){
+    const g=document.createElement('div'); g.className='seg';
+    g.style.left=((i+0.5)/6*100)+'%'; g.style.width=(100/6)+'%';
+    g.style.background='linear-gradient(90deg,'+SLIDES[i].color+','+SLIDES[i+1].color+')';
+    g.style.opacity=.28; g.dataset.seg=i; stationsEl.appendChild(g);
+  }
+  SLIDES.forEach((s,i)=>{
+    const b=document.createElement('button'); b.className='station'; b.type='button';
+    b.style.setProperty('--stn',s.color); b.setAttribute('aria-current',i===0?'true':'false');
+    b.innerHTML='<span class="dot"></span><span class="stn-num">'+(i+1)+'교시</span><span class="stn-label">'+s.short+'</span>';
+    b.addEventListener('click',()=>go(i)); stationsEl.appendChild(b);
+  });
+})();
+function go(i){
+  i=clamp(i,0,5);
+  if(i===cur && $('#'+SLIDES[i].id).classList.contains('active')) return;
+  const lcPrev=lifecycle[SLIDES[cur].id]; if(lcPrev&&lcPrev.leave) lcPrev.leave();
+  cur=i;
+  $$('.slide').forEach(s=>s.classList.remove('active'));
+  $('#'+SLIDES[i].id).classList.add('active');
+  $$('.station').forEach((b,k)=>{b.setAttribute('aria-current',k===i?'true':'false');b.classList.toggle('done',k<i);});
+  $$('.seg').forEach(sg=>{sg.style.opacity=(+sg.dataset.seg<i)?.95:.28;});
+  $('#phaseLabel').textContent=SLIDES[i].phase;
+  $('#footTitle').textContent=SLIDES[i].title;
+  $('#prevBtn').disabled=i===0;
+  $('#nextBtn').disabled=i===5;
+  $('#nextBtn').textContent=i===5?'마지막 교시':'다음 교시 →';
+  $('#viewport').scrollTop=0;
+  const lc=lifecycle[SLIDES[i].id]; if(lc&&lc.enter) lc.enter();
+}
+$('#prevBtn').addEventListener('click',()=>go(cur-1));
+$('#nextBtn').addEventListener('click',()=>go(cur+1));
+document.addEventListener('keydown',e=>{
+  const t=e.target.tagName;
+  if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT') return;
+  if(e.key==='ArrowRight'||e.key==='PageDown'){e.preventDefault();go(cur+1);}
+  if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();go(cur-1);}
+});
+$$('.panel').forEach(p=>p.setAttribute('role','tabpanel'));
+$$('[role="tablist"]').forEach(list=>{
+  const slide=list.closest('.slide');
+  $$('.tab',list).forEach(tab=>{
+    tab.setAttribute('aria-controls',tab.dataset.tab);
+    tab.addEventListener('click',()=>{
+      $$('.tab',list).forEach(t=>t.setAttribute('aria-selected','false'));
+      tab.setAttribute('aria-selected','true');
+      $$('.panel',slide).forEach(p=>p.classList.remove('on'));
+      const p=$('#'+tab.dataset.tab); if(p)p.classList.add('on');
+    });
+  });
+});
+
+/* ================================================================
+   1교시
+   ================================================================ */
+(function(){
+  const N={
+    A:{x:62,y:150,w:92,label:'내 PC',sub:'192.168.0.10',mac:'00:1A:2B:3C:4D:5E'},
+    B:{x:196,y:150,w:92,label:'우리집 공유기',sub:'192.168.0.1',mac:'88:36:6C:9F:12:A0'},
+    C1:{x:346,y:88,w:106,label:'통신사 라우터 A',sub:'국도 나들목',mac:'0C:47:C9:AA:31:07'},
+    C2:{x:346,y:212,w:106,label:'통신사 라우터 B',sub:'우회 나들목',mac:'0C:47:C9:AA:31:42'},
+    D:{x:506,y:150,w:100,label:'인터넷 백본',sub:'고속도로',mac:'5E:11:B4:77:E0:33'},
+    E:{x:648,y:150,w:92,label:'목적지 서버',sub:'142.250.196.100',mac:'3C:D9:2B:00:9A:17'}
+  };
+  const LINKS=[['A','B'],['B','C1'],['B','C2'],['C1','D'],['C2','D'],['D','E']];
+  const STORY=[
+    '메시지가 <b>3조각</b>으로 나뉘었습니다. 각 조각에 똑같은 송장이 붙습니다.',
+    '공유기 도착. 집 안의 짐을 모아 <b>바깥 도로</b>로 내보냅니다. 송장은 그대로입니다.',
+    '통신사 라우터가 지도를 보고 <b>“이쪽 방향”</b>이라고 길을 안내합니다.',
+    '백본, 즉 <b>대륙을 잇는 고속도로</b>에 올라탔습니다.',
+    '도착! 3조각이 <b>다시 하나</b>로 조립됩니다.'
+  ];
+  let idx=0,failed=false,timer=null;
+  const svg=el('svg',{viewBox:'0 0 720 260',role:'img','aria-label':'패킷이 내 PC에서 목적지 서버까지 이동하는 경로도'});
+  const gL=el('g',{}),gN=el('g',{}),gP=el('g',{});
+  svg.appendChild(gL);svg.appendChild(gN);svg.appendChild(gP);
+  $('#s1stage').appendChild(svg);
+  const linkEls={};
+  LINKS.forEach(([a,b])=>{const l=el('line',{x1:N[a].x,y1:N[a].y,x2:N[b].x,y2:N[b].y,'stroke-width':3,'stroke-linecap':'round',stroke:'#D2D8E4'});linkEls[a+'-'+b]=l;gL.appendChild(l);});
+  const nodeEls={};
+  Object.keys(N).forEach(k=>{
+    const n=N[k],g=el('g',{});
+    const r=el('rect',{x:n.x-n.w/2,y:n.y-20,width:n.w,height:40,rx:9,fill:'#fff',stroke:'#D2D8E4','stroke-width':1.5});
+    const t1=el('text',{x:n.x,y:n.y-2,'text-anchor':'middle','font-size':12,'font-weight':600,fill:'#101A2E'},n.label);
+    const t2=el('text',{x:n.x,y:n.y+13,'text-anchor':'middle','font-size':9.5,fill:'#7B8699','font-family':'IBM Plex Mono, monospace'},n.sub);
+    const x=el('text',{x:n.x,y:n.y+38,'text-anchor':'middle','font-size':15,'font-weight':700,fill:'#C0433C',opacity:0},'✕ 고장');
+    g.appendChild(r);g.appendChild(t1);g.appendChild(t2);g.appendChild(x);
+    gN.appendChild(g);nodeEls[k]={rect:r,x:x,t1:t1};
+  });
+  const pkt=el('g',{});
+  pkt.style.transition='transform .5s cubic-bezier(.45,.05,.25,1)';
+  [-24,-4,16].forEach((dx,i)=>{
+    pkt.appendChild(el('rect',{x:dx,y:-8,width:18,height:14,rx:3,fill:'#0E7C86',stroke:'#fff','stroke-width':1.5}));
+    pkt.appendChild(el('text',{x:dx+9,y:2.5,'text-anchor':'middle','font-size':8,fill:'#fff','font-weight':600},String(i+1)));
+  });
+  gP.appendChild(pkt);
+  const route=()=>['A','B',failed?'C2':'C1','D','E'];
+  function update(){
+    const rt=route();
+    Object.keys(linkEls).forEach(k=>{linkEls[k].setAttribute('stroke','#D2D8E4');linkEls[k].setAttribute('stroke-dasharray','');});
+    for(let i=0;i<rt.length-1;i++){const l=linkEls[rt[i]+'-'+rt[i+1]];if(l)l.setAttribute('stroke',i<idx?'#0E7C86':'#AEB9CB');}
+    if(failed){['B-C1','C1-D'].forEach(k=>{linkEls[k].setAttribute('stroke','#E8B4B1');linkEls[k].setAttribute('stroke-dasharray','5 5');});}
+    Object.keys(N).forEach(k=>{
+      const on=rt.indexOf(k)>=0&&rt.indexOf(k)<=idx;
+      nodeEls[k].rect.setAttribute('fill',on?'#0E7C86':'#fff');
+      nodeEls[k].rect.setAttribute('stroke',on?'#0E7C86':'#D2D8E4');
+      nodeEls[k].t1.setAttribute('fill',on?'#fff':'#101A2E');
+      nodeEls[k].x.setAttribute('opacity',(failed&&k==='C1')?1:0);
+      if(failed&&k==='C1'){nodeEls[k].rect.setAttribute('fill','#F3DEDC');nodeEls[k].rect.setAttribute('stroke','#C0433C');nodeEls[k].t1.setAttribute('fill','#96322C');}
+    });
+    const here=N[rt[idx]];
+    pkt.setAttribute('transform','translate('+here.x+','+(here.y-34)+')');
+    const nxt=rt[idx+1];
+    $('#s1smac').textContent=N[rt[idx]].mac;
+    $('#s1dmac').textContent=nxt?N[nxt].mac:'— 최종 도착 —';
+    $('#s1smac').classList.remove('chg');$('#s1dmac').classList.remove('chg');
+    void $('#s1smac').offsetWidth;
+    if(idx>0){$('#s1smac').classList.add('chg');$('#s1dmac').classList.add('chg');}
+    $('#s1pos').textContent=N[rt[idx]].label;
+    $('#s1hops').innerHTML=idx+'<span class="u"> / 4</span>';
+    $('#s1story').innerHTML=STORY[idx];
+    $('#s1next').disabled=idx>=4;
+    $('#s1next').textContent=idx>=4?'도착 완료':'한 구간 이동 →';
+  }
+  function stopAuto(){if(timer){clearInterval(timer);timer=null;$('#s1auto').textContent='자동 재생';}}
+  $('#s1next').addEventListener('click',()=>{stopAuto();if(idx<4){idx++;update();}});
+  $('#s1reset').addEventListener('click',()=>{stopAuto();idx=0;update();});
+  $('#s1auto').addEventListener('click',()=>{
+    if(timer){stopAuto();return;}
+    if(idx>=4)idx=0; update(); $('#s1auto').textContent='정지';
+    timer=setInterval(()=>{if(idx>=4){stopAuto();return;}idx++;update();},900);
+  });
+  $('#s1fail').addEventListener('change',e=>{
+    failed=e.target.checked; const moved=idx>=2; if(moved)idx=1; update();
+    if(moved) $('#s1story').innerHTML=failed
+      ? '앞길이 막혔습니다. 라우터가 <b>다른 나들목</b>으로 길을 다시 고릅니다.'
+      : '길이 복구됐습니다. 라우터가 <b>더 빠른 원래 길</b>로 되돌립니다.';
+  });
+  lifecycle['s1']={leave:stopAuto};
+  update();
+
+  /* --- 명령어 탭 --- */
+  const CHIPS=['내 PC','우리집 공유기','통신사 라우터','인터넷 백본','목적지 서버'];
+  const CMDS=[
+    {c:'ipconfig /all',focus:[0],
+     q:'내 컴퓨터의 주소는 무엇인가?',
+     w:'IP·MAC·게이트웨이·DNS 네 가지가 한 화면에 나옵니다. <b>오늘 배울 개념이 전부 여기</b> 있습니다.',
+     o:'<span class="c">C:\\&gt; ipconfig /all</span>\n\n이더넷 어댑터 Wi-Fi:\n   물리적 주소 . . . . . : <span class="h">00-1A-2B-3C-4D-5E</span>   ← MAC\n   IPv4 주소 . . . . . . : <span class="h">192.168.0.10</span>(기본 설정)\n   서브넷 마스크 . . . . : 255.255.255.0\n   기본 게이트웨이 . . . : <span class="h">192.168.0.1</span>   ← 밖으로 나가는 출구\n   DNS 서버. . . . . . . : <span class="h">168.126.63.1</span>   ← 전화번호부'},
+    {c:'arp -a',focus:[0,1],
+     q:'내가 실제로 짐을 건네는 상대는 누구인가?',
+     w:'게이트웨이의 MAC이 보입니다. <b>같은 동네(LAN) 안의 장비만</b> 기록됩니다. 옆집 공유기는 여기 없습니다.',
+     o:'<span class="c">C:\\&gt; arp -a</span>\n\n인터페이스: 192.168.0.10\n  인터넷 주소       물리적 주소           유형\n  <span class="h">192.168.0.1</span>       <span class="h">88-36-6c-9f-12-a0</span>     동적   ← 공유기\n  192.168.0.15      3c-22-fb-11-90-2e     동적   ← 내 폰\n  192.168.0.22      b8-27-eb-4d-77-01     동적   ← TV'},
+    {c:'ping 8.8.8.8',focus:[0,1,2,3,4],
+     q:'저 끝까지 닿는가? 얼마나 걸리는가?',
+     w:'집 안은 1ms 미만, 바깥은 수십 ms입니다. <b>지연은 곧 거리</b>입니다.',
+     o:'<span class="c">C:\\&gt; ping 8.8.8.8</span>\n\n8.8.8.8의 응답: 바이트=32 시간=<span class="h">31ms</span> TTL=115\n8.8.8.8의 응답: 바이트=32 시간=<span class="h">30ms</span> TTL=115\n8.8.8.8의 응답: 바이트=32 시간=<span class="h">32ms</span> TTL=115\n\n<span class="c">C:\\&gt; ping 192.168.0.1</span>\n192.168.0.1의 응답: 시간&lt;<span class="g">1ms</span>   ← 집 안이라 즉시'},
+    {c:'tracert 8.8.8.8',focus:[1,2,3,4],
+     q:'가는 길에 어떤 라우터를 거치는가?',
+     w:'<b>MAC이 한 개도 없습니다.</b> MAC은 한 구간용이라 지나면 버려지기 때문입니다. 1번 홉이 우리 집 공유기, <b>2번 홉부터는 남의 장비</b>입니다.',
+     o:'<span class="c">C:\\&gt; tracert 8.8.8.8</span>\n\n  1     1 ms   <span class="h">192.168.0.1</span>        ← 우리 집 공유기\n  2    12 ms   112.xxx.xxx.1        ← 통신사\n  3    14 ms   112.xxx.xxx.45\n  4     *    요청 시간 만료.        ← 응답 거부 (정상)\n  5    28 ms   72.14.xxx.xxx        ← 백본\n  6    31 ms   <span class="h">8.8.8.8</span>\n\n추적을 완료했습니다.'},
+    {c:'nslookup www.naver.com',focus:[4],
+     q:'이름은 어떤 번호로 바뀌는가?',
+     w:'사람은 이름을, 네트워크는 번호를 씁니다. IP가 여러 개면 <b>서버가 여러 대</b>라는 뜻입니다. 이 번역 과정이 <b>5교시에서 공격 도구가 됩니다.</b>',
+     o:'<span class="c">C:\\&gt; nslookup www.naver.com</span>\n\n서버:    kns.kornet.net\nAddress: <span class="h">168.126.63.1</span>      ← 전화번호부에게 물어봄\n\n권한 없는 응답:\n이름:    www.naver.com\nAddresses: <span class="h">223.130.200.104</span>\n           <span class="h">223.130.200.107</span>'}
+  ];
+  const chipsWrap=$('#s1chips');
+  CHIPS.forEach(c=>{const s=document.createElement('span');s.className='nchip';s.textContent=c;chipsWrap.appendChild(s);});
+  const cmdWrap=$('#s1cmds');
+  CMDS.forEach((m,i)=>{
+    const b=document.createElement('button');
+    b.className='cmd';b.type='button';b.textContent=m.c;b.setAttribute('aria-pressed','false');
+    b.addEventListener('click',()=>{
+      $$('.cmd',cmdWrap).forEach(x=>x.setAttribute('aria-pressed','false'));
+      b.setAttribute('aria-pressed','true');
+      $$('.nchip',chipsWrap).forEach((c,k)=>{
+        c.classList.toggle('hot',m.focus.indexOf(k)>=0);
+        c.classList.toggle('dim',m.focus.indexOf(k)<0);
+      });
+      $('#s1term').innerHTML=m.o;
+      $('#s1qa').textContent=m.q;
+      $('#s1why').innerHTML=m.w;
+    });
+    cmdWrap.appendChild(b);
+  });
+  $('#s1term').innerHTML='<span class="c">위에서 명령어를 하나 골라 보세요.</span>';
+})();
+
+/* ================================================================
+   2교시
+   ================================================================ */
+(function(){
+  const D=[
+   {k:'naver',n:'www.naver.com',t:'국내',hops:12,rtt:8,ips:1,loc:'국내 (서울)'},
+   {k:'kakao',n:'www.kakaocorp.com',t:'국내',hops:14,rtt:11,ips:3,loc:'국내 (경기)'},
+   {k:'google',n:'www.google.com',t:'미국 회사',hops:9,rtt:6,ips:8,loc:'국내 CDN 서버',cdn:true,
+    alt:{hops:20,rtt:178,loc:'미국 캘리포니아 본사'}},
+   {k:'github',n:'github.com',t:'미국',hops:19,rtt:152,ips:1,loc:'미국'},
+   {k:'au',n:'www.australia.gov.au',t:'호주',hops:21,rtt:168,ips:1,loc:'호주'}
+  ];
+  const probed={}; let sel=null, cdnOff=false, anim=null;
+  const dr=$('#s2dests');
+  D.forEach(d=>{
+    const b=document.createElement('button');
+    b.className='dest';b.type='button';b.setAttribute('aria-pressed','false');
+    b.innerHTML=d.n+'<small>'+d.t+'</small>';
+    b.addEventListener('click',()=>probe(d,b));
+    dr.appendChild(b);
+  });
+  /* 홉 체인 */
+  const HW=460,HH=150;
+  const hs=el('svg',{viewBox:'0 0 '+HW+' '+HH,role:'img','aria-label':'목적지까지 거치는 홉을 나타낸 선'});
+  $('#s2hops').appendChild(hs);
+  const hLine=el('line',{x1:40,y1:70,x2:HW-40,y2:70,stroke:'#D2D8E4','stroke-width':3,'stroke-linecap':'round'});
+  const hProg=el('line',{x1:40,y1:70,x2:40,y2:70,stroke:'#0E7C86','stroke-width':3,'stroke-linecap':'round'});
+  const hTicks=el('g',{}); const hDot=el('circle',{cx:40,cy:70,r:7,fill:'#0E7C86',opacity:0});
+  hs.appendChild(hLine);hs.appendChild(hProg);hs.appendChild(hTicks);hs.appendChild(hDot);
+  hs.appendChild(el('text',{x:40,y:96,'text-anchor':'middle','font-size':10.5,fill:'#7B8699'},'내 PC'));
+  const hEnd=el('text',{x:HW-40,y:96,'text-anchor':'middle','font-size':10.5,fill:'#7B8699'},'목적지');
+  const hMid=el('text',{x:HW/2,y:36,'text-anchor':'middle','font-size':12,fill:'#39455E','font-weight':600},'목적지를 선택하세요');
+  const hClock=el('text',{x:HW/2,y:124,'text-anchor':'middle','font-size':13,fill:'#0E7C86','font-weight':600,'font-family':'IBM Plex Mono, monospace'},'');
+  hs.appendChild(hEnd);hs.appendChild(hMid);hs.appendChild(hClock);
+  /* 산점도 */
+  const CW=420,CH=250,PL=44,PR=16,PT=18,PB=34;
+  const cs=el('svg',{viewBox:'0 0 '+CW+' '+CH,role:'img','aria-label':'홉 수와 왕복 시간의 관계를 나타낸 산점도'});
+  $('#s2chart').appendChild(cs);
+  const X=h=>PL+((h-6)/18)*(CW-PL-PR), Y=r=>CH-PB-(clamp(r,0,200)/200)*(CH-PT-PB);
+  [0,50,100,150,200].forEach(v=>{
+    cs.appendChild(el('line',{x1:PL,y1:Y(v),x2:CW-PR,y2:Y(v),stroke:'#E4E8F0'}));
+    cs.appendChild(el('text',{x:PL-7,y:Y(v)+4,'text-anchor':'end','font-size':9.5,fill:'#AEB9CB','font-family':'IBM Plex Mono, monospace'},v));
+  });
+  [8,12,16,20,24].forEach(h=>cs.appendChild(el('text',{x:X(h),y:CH-14,'text-anchor':'middle','font-size':9.5,fill:'#AEB9CB','font-family':'IBM Plex Mono, monospace'},h)));
+  cs.appendChild(el('text',{x:CW/2,y:CH-2,'text-anchor':'middle','font-size':10,fill:'#7B8699'},'홉 수'));
+  cs.appendChild(el('text',{x:12,y:PT+4,'font-size':10,fill:'#7B8699'},'ms'));
+  const trend=el('line',{stroke:'#AEB9CB','stroke-width':1.6,'stroke-dasharray':'5 4',opacity:0});
+  const pts=el('g',{}); cs.appendChild(trend); cs.appendChild(pts);
+
+  function probe(d,btn){
+    sel=d; $$('.dest',dr).forEach(x=>x.setAttribute('aria-pressed','false'));
+    btn.setAttribute('aria-pressed','true'); btn.classList.add('probed');
+    const eff=(d.cdn&&cdnOff)?Object.assign({},d,d.alt):d;
+    probed[d.k]=eff;
+    hMid.textContent=d.n;
+    hEnd.textContent=eff.loc;
+    hTicks.textContent='';
+    const span=(HW-80)/(eff.hops);
+    for(let i=1;i<=eff.hops;i++){
+      hTicks.appendChild(el('circle',{cx:40+span*i,cy:70,r:i===eff.hops?6:3,fill:i===eff.hops?'#0E7C86':'#AEB9CB'}));
+    }
+    if(anim) clearInterval(anim);
+    let t0=performance.now(); hDot.setAttribute('opacity',1);
+    anim=setInterval(()=>{
+      const p=clamp((performance.now()-t0)/1200,0,1);
+      hDot.setAttribute('cx',40+(HW-80)*p);
+      hProg.setAttribute('x2',40+(HW-80)*p);
+      hClock.textContent=(eff.rtt*p).toFixed(0)+' ms';
+      if(p>=1){clearInterval(anim);anim=null;}
+    },30);
+    $('#s2hop').textContent=eff.hops;
+    $('#s2rtt').innerHTML=eff.rtt+'<span class="u">ms</span>';
+    $('#s2ip').innerHTML=eff.ips+'<span class="u">개</span>';
+    $('#s2loc').textContent=eff.loc;
+    draw();
+  }
+  function draw(){
+    pts.textContent='';
+    const list=Object.keys(probed).map(k=>probed[k]);
+    const normal=list.filter(p=>!p.cdn||cdnOff);
+    if(normal.length>=2){
+      let sx=0,sy=0,sxx=0,sxy=0,n=normal.length;
+      normal.forEach(p=>{sx+=p.hops;sy+=p.rtt;sxx+=p.hops*p.hops;sxy+=p.hops*p.rtt;});
+      const a=(n*sxy-sx*sy)/(n*sxx-sx*sx), b=(sy-a*sx)/n;
+      trend.setAttribute('x1',X(7));trend.setAttribute('y1',Y(a*7+b));
+      trend.setAttribute('x2',X(23));trend.setAttribute('y2',Y(a*23+b));
+      trend.setAttribute('opacity',1);
+    } else trend.setAttribute('opacity',0);
+    list.forEach(p=>{
+      const out=p.cdn&&!cdnOff;
+      if(out) pts.appendChild(el('circle',{cx:X(p.hops),cy:Y(p.rtt),r:11,fill:'none',stroke:'#A87708','stroke-width':2.5}));
+      pts.appendChild(el('circle',{cx:X(p.hops),cy:Y(p.rtt),r:5.5,fill:out?'#A87708':'#0E7C86'}));
+      pts.appendChild(el('text',{x:X(p.hops),y:Y(p.rtt)-16,'text-anchor':'middle','font-size':10,fill:out?'#A87708':'#39455E','font-weight':out?700:500},p.n.replace('www.','').split('.')[0]));
+    });
+    const done=Object.keys(probed).length;
+    let note;
+    if(done<5) note='다섯 곳을 모두 추적해 보세요. (' + done + ' / 5) 점들이 <b>직선에 가깝게</b> 늘어섭니다.';
+    else if(cdnOff) note='구글 점이 <b>직선 위로 돌아왔습니다.</b> 원래는 20홉·178ms 거리였는데, 국내 CDN 서버가 대신 답했던 것입니다.';
+    else note='구글만 <b>직선에서 크게 벗어나 있습니다.</b> 미국 회사인데 왜 국내처럼 빠를까요? 아래 체크박스를 켜 보세요.';
+    $('#s2note').innerHTML=note;
+  }
+  $('#s2cdn').addEventListener('change',e=>{
+    cdnOff=e.target.checked;
+    const g=D[2];
+    if(probed['google']){ probe(g,$$('.dest',dr)[2]); }
+    else { $('#s2note').innerHTML='먼저 <b>www.google.com</b>을 한 번 추적해 보세요. 그래야 비교가 됩니다.'; }
+  });
+  lifecycle['s2']={leave:()=>{if(anim){clearInterval(anim);anim=null;}}};
+})();
+
+/* ================================================================
+   3교시
+   ================================================================ */
+(function(){
+  const HOPS=[
+    {n:'내 PC',who:'운영 주체: 나',x:70},
+    {n:'카페 와이파이',who:'운영 주체: 카페 사장 (또는 누구든)',x:225},
+    {n:'통신사',who:'운영 주체: 인터넷 서비스 사업자',x:380},
+    {n:'인터넷 백본',who:'운영 주체: 여러 통신 사업자',x:535},
+    {n:'서비스 서버',who:'운영 주체: 서비스 회사',x:680}
+  ];
+  const SECRET='id=hong&pw=mypass123';
+  const CIPHER='9f3a71c0 4e88bb2d 05ac931f 77e2';
+  let proto='http', mitm=false, sel=1;
+  const svg=el('svg',{viewBox:'0 0 750 220',role:'img','aria-label':'로그인 정보가 홉을 지나며 노출되는 정도를 나타낸 그림'});
+  $('#s3stage').appendChild(svg);
+  const line=el('line',{x1:70,y1:100,x2:680,y2:100,stroke:'#D2D8E4','stroke-width':3});
+  svg.appendChild(line);
+  const nodes=HOPS.map((h,i)=>{
+    const g=el('g',{class:'eye',tabindex:'0',role:'button'});
+    const c=el('circle',{cx:h.x,cy:100,r:22,fill:'#fff',stroke:'#AEB9CB','stroke-width':2.5});
+    const ic=el('text',{x:h.x,y:106,'text-anchor':'middle','font-size':17},'👁');
+    const t=el('text',{x:h.x,y:145,'text-anchor':'middle','font-size':11,fill:'#39455E','font-weight':600},h.n);
+    const s=el('text',{x:h.x,y:161,'text-anchor':'middle','font-size':9.5,fill:'#AEB9CB','font-family':'IBM Plex Mono, monospace'},'');
+    g.appendChild(c);g.appendChild(ic);g.appendChild(t);g.appendChild(s);
+    g.appendChild(el('title',{},h.n));
+    g.addEventListener('click',()=>{sel=i;render();});
+    g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();sel=i;render();}});
+    svg.appendChild(g);
+    return {c,ic,t,s};
+  });
+  const warn=el('g',{opacity:0});
+  warn.appendChild(el('rect',{x:150,y:32,width:150,height:26,rx:6,fill:'#A87708'}));
+  warn.appendChild(el('text',{x:225,y:50,'text-anchor':'middle','font-size':11,fill:'#fff','font-weight':600},'⚠ 인증서 경고 · 차단'));
+  svg.appendChild(warn);
+  const label=el('text',{x:375,y:196,'text-anchor':'middle','font-size':12,fill:'#7B8699'},'');
+  svg.appendChild(label);
+
+  function state(i){
+    // 반환: 'plain' 읽힘 / 'cipher' 암호문 / 'none' 도달 못함 / 'owner' 본인
+    if(i===0) return 'owner';
+    if(proto==='https'&&mitm){ return i===1 ? 'blocked' : 'none'; }
+    if(i===4) return 'owner';
+    return proto==='http' ? 'plain' : 'cipher';
+  }
+  function render(){
+    const blocked=(proto==='https'&&mitm);
+    HOPS.forEach((h,i)=>{
+      const st=state(i);
+      const n=nodes[i];
+      let fill='#fff',stroke='#AEB9CB',ico='👁',sub='',tc='#39455E';
+      if(st==='plain'){fill='#F6E2E0';stroke='#C0433C';sub='다 읽힘';tc='#96322C';}
+      else if(st==='cipher'){fill='#E4F0EC';stroke='#1F7A55';sub='암호문만';ico='🔒';}
+      else if(st==='owner'){fill='#EEF1F6';stroke='#7B8699';sub='본인';ico='🙂';}
+      else if(st==='none'){fill='#fff';stroke='#E4E8F0';sub='도달 안 함';ico='·';}
+      else if(st==='blocked'){fill='#FBEFD6';stroke='#A87708';sub='차단';ico='⚠';}
+      if(mitm&&i===1){stroke='#C0433C';n.t.textContent='가짜 접속점';ico=blocked?'⚠':'😈';}
+      else if(i===1){n.t.textContent='카페 와이파이';}
+      n.c.setAttribute('fill',fill);n.c.setAttribute('stroke',stroke);
+      n.ic.textContent=ico;n.s.textContent=sub;n.s.setAttribute('fill',tc==='#96322C'?'#C0433C':'#AEB9CB');
+      n.c.setAttribute('stroke-width',i===sel?4:2.5);
+    });
+    line.setAttribute('stroke',blocked?'#E4E8F0':(proto==='http'?'#E8B4B1':'#9FD3C0'));
+    warn.setAttribute('opacity',blocked?1:0);
+    label.textContent = blocked ? '연결이 성립되지 않아 비밀번호가 전송되지 않았습니다.'
+      : (proto==='http' ? '전송 내용: '+SECRET+'  (봉투 없이 그대로)' : '전송 내용: 암호문 (봉해짐)');
+    label.setAttribute('fill',proto==='http'&&!blocked?'#C0433C':'#7B8699');
+
+    const h=HOPS[sel], st=state(sel);
+    $('#s3sel').textContent=(sel+1)+'번째 지점 · '+ (mitm&&sel===1?'가짜 접속점':h.n);
+    $('#s3who').textContent=(mitm&&sel===1)?'운영 주체: 공격자 (카페 사장인 척하는 누군가)':h.who;
+    const leak=$('#s3leak'), can=$('#s3can');
+    if(st==='plain'){
+      leak.className='leak open'; leak.textContent=SECRET;
+      can.innerHTML=(mitm&&sel===1)
+        ? '읽는 것에서 그치지 않습니다. <b>내용을 바꿔치기</b>할 수도 있습니다. 송금 계좌번호가 조용히 바뀌는 사고가 이렇게 일어납니다.'
+        : '이 자리에 앉은 사람은 <b>아이디와 비밀번호를 그대로 읽을 수 있습니다.</b> 특별한 기술이 필요하지 않습니다.';
+    } else if(st==='cipher'){
+      leak.className='leak safe'; leak.textContent=CIPHER+' …';
+      can.innerHTML='내용은 봉해져 있습니다. 다만 <b>어느 사이트에 접속했는지</b>는 여전히 보입니다. 암호화가 모든 것을 숨기지는 않습니다.';
+    } else if(st==='owner'){
+      leak.className='leak safe'; leak.textContent=SECRET;
+      can.innerHTML=sel===0?'출발점이므로 당연히 원문이 보입니다.':'목적지이므로 봉투를 열어 처리합니다. <b>암호화는 가는 길을 보호하는 것</b>이지 서버에 안 보이게 하는 게 아닙니다.';
+    } else if(st==='none'){
+      leak.className='leak safe'; leak.textContent='(전달된 것이 없음)';
+      can.innerHTML='앞 단계에서 연결이 끊겼기 때문에 <b>여기까지 오지 않았습니다.</b>';
+    } else {
+      leak.className='leak block'; leak.textContent='인증서 검증 실패 → 브라우저가 연결을 차단';
+      can.innerHTML='공격자는 내용을 봉하는 흉내는 낼 수 있어도 <b>“내가 진짜 그 사이트다”라는 증명서는 위조하지 못합니다.</b> 그래서 경고가 뜹니다.';
+    }
+    let n;
+    if(blocked) n='가짜 접속점이 있어도 <b>https는 인증서 검증에서 막아 냅니다.</b> 이때 뜨는 경고를 “무시하고 계속”으로 넘기면 방어가 사라집니다.';
+    else if(mitm) n='가짜 접속점이 <b>내 게이트웨이 자리</b>를 차지했습니다. 1교시에서 본 “짐을 건네는 상대는 공유기 하나뿐”이 그대로 약점이 됩니다.';
+    else if(proto==='http') n='2교시에서 센 홉 하나하나가 <b>내 비밀번호를 읽을 수 있는 자리</b>입니다. 홉을 눌러 확인해 보세요.';
+    else n='내용이 봉해져 중간 홉에서는 <b>암호문만</b> 보입니다. 출발지와 목적지에서만 원문이 보입니다.';
+    $('#s3note').innerHTML=n;
+  }
+  $$('#s3proto button').forEach(b=>b.addEventListener('click',()=>{
+    $$('#s3proto button').forEach(x=>x.setAttribute('aria-pressed','false'));
+    b.setAttribute('aria-pressed','true'); proto=b.dataset.v; render();
+  }));
+  $('#s3mitm').addEventListener('change',e=>{mitm=e.target.checked;render();});
+  render();
+})();
+
+/* ================================================================
+   4교시
+   ================================================================ */
+(function(){
+  const PORTS=[
+   {p:22,n:'원격 접속 (SSH)',risk:4,can:'명령어로 컴퓨터 전체를 조작할 수 있습니다.',adv:'서버 관리자가 아니라면 닫아 두세요.'},
+   {p:80,n:'웹 (HTTP)',risk:2,can:'평문 웹 요청을 받습니다. 내용이 그대로 오갑니다.',adv:'집 PC에서 웹서버를 돌리는 게 아니면 필요 없습니다.'},
+   {p:443,n:'웹 (HTTPS)',risk:1,can:'암호화된 웹 요청을 받습니다.',adv:'서버를 운영할 때만 엽니다. 웹 서핑에는 필요 없습니다.'},
+   {p:445,n:'파일 공유 (SMB)',risk:5,can:'파일을 통째로 읽거나 암호화할 수 있습니다. <b>랜섬웨어의 단골 통로</b>입니다.',adv:'인터넷에는 절대 노출하지 마세요. 사내에서도 최소한으로.'},
+   {p:3389,n:'원격 데스크톱 (RDP)',risk:5,can:'내 화면을 그대로 조작할 수 있습니다.',adv:'노출되면 비밀번호 자동 대입 시도가 <b>수 분 안에</b> 들어옵니다.'},
+   {p:5900,n:'화면 공유 (VNC)',risk:4,can:'화면을 실시간으로 들여다보고 조작할 수 있습니다.',adv:'기본 설정에 비밀번호가 없는 제품이 많습니다.'},
+   {p:554,n:'CCTV 영상 (RTSP)',risk:4,can:'집 안 카메라 영상을 실시간으로 볼 수 있습니다.',adv:'포트포워딩으로 여는 순간 <b>검색으로 발견될 수 있습니다.</b>'},
+   {p:9100,n:'네트워크 프린터',risk:2,can:'임의의 문서를 출력하거나 인쇄 기록을 가져갑니다.',adv:'사내 네트워크 안에서만 쓰세요.'}
+  ];
+  let open={445:true,3389:true,9100:true}, fwd=false, sel=null;
+  const wrap=$('#s4doors');
+  PORTS.forEach((d,i)=>{
+    const b=document.createElement('button');
+    b.className='door';b.type='button';b.dataset.i=i;
+    b.innerHTML='<span class="risk"></span><div class="p">'+d.p+'</div><div class="n">'+d.n+'</div><div class="s"></div>';
+    b.addEventListener('click',()=>{open[d.p]=!open[d.p];sel=i;render();});
+    wrap.appendChild(b);
+  });
+  function render(){
+    let score=0,cnt=0;
+    $$('.door',wrap).forEach((b,i)=>{
+      const d=PORTS[i], isOpen=!!open[d.p];
+      b.classList.toggle('open',isOpen);
+      b.classList.toggle('sel',sel===i);
+      b.querySelector('.s').textContent=isOpen?(fwd?'열림 · 인터넷 공개':'열림 · 집 안에서만'):'닫힘';
+      const r=b.querySelector('.risk');
+      r.textContent='위험 '+d.risk;
+      r.style.background=d.risk>=5?'#C0433C':d.risk>=4?'#A87708':d.risk>=2?'#7B8699':'#1F7A55';
+      r.style.opacity=isOpen?1:.25;
+      if(isOpen){cnt++;score+=d.risk*(fwd?2:1);}
+    });
+    const MAX=27*2;
+    $('#s4open').innerHTML=cnt+'<span class="u"> / 8</span>';
+    $('#s4ext').textContent=fwd?cnt:0;
+    $('#s4score').textContent=score;
+    const pct=clamp(score/MAX*100,0,100);
+    $('#s4bar').style.width=pct+'%';
+    let g,col;
+    if(score===0){g='안전 — 밖에서 두드릴 문이 없습니다';col='#1F7A55';}
+    else if(score<=8){g='주의 — 필요한 문인지 다시 확인하세요';col='#A87708';}
+    else if(score<=20){g='위험 — 고위험 문이 열려 있습니다';col='#C0433C';}
+    else {g='매우 위험 — 인터넷에 그대로 공개된 상태';col='#8E322C';}
+    $('#s4bar').style.background=col;
+    $('#s4grade').textContent=g; $('#s4grade').style.color=col;
+    if(sel!=null){
+      const d=PORTS[sel];
+      $('#s4selname').textContent=d.p+'번 · '+d.n;
+      $('#s4seldesc').innerHTML='<b>열려 있으면 가능한 일</b> — '+d.can;
+      $('#s4seladv').innerHTML='<b>권장</b> — '+d.adv+(fwd&&open[d.p]?' <b style="color:#C0433C">지금 이 문은 인터넷 전체에 공개돼 있습니다.</b>':'');
+    }
+  }
+  $('#s4fwd').addEventListener('change',e=>{fwd=e.target.checked;render();});
+  $('#s4safe').addEventListener('click',()=>{
+    open={};fwd=false;$('#s4fwd').checked=false;sel=null;
+    $('#s4selname').textContent='권장 상태로 되돌렸습니다';
+    $('#s4seldesc').innerHTML='일반 가정용 PC는 <b>밖에서 들어오는 문이 하나도 필요 없습니다.</b> 웹 서핑·유튜브·게임은 모두 내가 먼저 나가서 가져오는 방식이라, 문을 열어 둘 이유가 없습니다.';
+    $('#s4seladv').textContent='';
+    render();
+  });
+  render();
+})();
+
+/* ================================================================
+   5교시
+   ================================================================ */
+(function(){
+  /* --- ① URL 판별 --- */
+  const URLS=[
+   {u:'https://www.naver.com/login',real:true,host:'www.naver.com',own:'naver.com',
+    why:'호스트의 마지막 두 조각이 <b>naver.com</b>입니다. 앞의 www는 누구나 붙일 수 있는 이름표일 뿐 주인이 아닙니다.'},
+   {u:'https://naver.com.login-page.xyz/verify',real:false,host:'naver.com.login-page.xyz',own:'login-page.xyz',
+    why:'앞에 naver.com이 보이지만 <b>마지막 두 조각은 login-page.xyz</b>입니다. 진짜 주인은 xyz 쪽입니다. 이것이 가장 흔한 수법입니다.'},
+   {u:'https://accounts.google.com/signin',real:true,host:'accounts.google.com',own:'google.com',
+    why:'accounts는 google.com이 만든 하위 이름입니다. <b>점의 오른쪽 끝</b>이 주인이라는 규칙 그대로입니다.'},
+   {u:'https://www.paypa1.com/account',real:false,host:'www.paypa1.com',own:'paypa1.com',
+    why:'영문 소문자 l 대신 <b>숫자 1</b>을 썼습니다. 글자 모양이 비슷한 것을 노린 수법이라, 눈으로만 보면 놓치기 쉽습니다.'},
+   {u:'https://kakao-support.help/reset',real:false,host:'kakao-support.help',own:'kakao-support.help',
+    why:'kakao가 들어 있지만 <b>붙임표로 이어 붙인 완전히 다른 도메인</b>입니다. 회사 이름이 포함됐다고 그 회사 것은 아닙니다.'},
+   {u:'https://banking.kbstar.com/login',real:true,host:'banking.kbstar.com',own:'kbstar.com',
+    why:'마지막 두 조각이 <b>kbstar.com</b>으로, 실제 은행이 쓰는 도메인입니다.'}
+  ];
+  let qi=0, score=0, answered=0, locked=false;
+  function showQ(){
+    const q=URLS[qi];
+    const m=q.u.match(/^(https?:\/\/)([^\/]+)(\/.*)?$/);
+    $('#s5url').innerHTML='<span style="color:#6C7B96">'+m[1]+'</span><span class="host">'+m[2]+'</span><span class="path">'+(m[3]||'')+'</span>';
+    $('#s5v').className='verdict'; $('#s5parse').style.display='none';
+    locked=false; $('#s5next2').disabled=true; $('#s5next2').textContent='다음 문제 →';
+    $('#s5real').disabled=false; $('#s5fake').disabled=false;
+  }
+  function answer(said){
+    if(locked) return; locked=true; answered++;
+    const q=URLS[qi], ok=(said===q.real);
+    if(ok) score++;
+    const parts=q.host.split('.');
+    const front=parts.slice(0,-2).join('.'), own=parts.slice(-2).join('.');
+    const m=q.u.match(/^(https?:\/\/)([^\/]+)(\/.*)?$/);
+    $('#s5url').innerHTML='<span style="color:#6C7B96">'+m[1]+'</span>'+
+      (front?'<span class="host">'+front+'.</span>':'')+
+      '<span class="host own">'+own+'</span><span class="path">'+(m[3]||'')+'</span>';
+    const v=$('#s5v');
+    v.className='verdict show '+(ok?'good':'miss');
+    v.innerHTML=(ok?'맞혔습니다. ':'아쉽습니다. ')+'이 주소는 <b>'+(q.real?'진짜':'가짜')+'</b>입니다. '+q.why;
+    $('#s5parse').style.display='';
+    $('#s5parse').innerHTML=
+      '<div class="row"><span>프로토콜</span><span>'+m[1]+'</span></div>'+
+      '<div class="row"><span>호스트</span><span>'+q.host+'</span></div>'+
+      '<div class="row"><span>진짜 주인</span><span style="font-weight:700">'+own+'</span></div>'+
+      '<div class="row"><span>경로</span><span style="color:var(--muted)">'+(m[3]||'(없음)')+' — 여기는 주인과 무관</span></div>';
+    $('#s5score').textContent=score+' / '+answered;
+    $('#s5real').disabled=true; $('#s5fake').disabled=true;
+    if(qi>=URLS.length-1){
+      $('#s5next2').disabled=false;
+      $('#s5next2').textContent='처음부터 다시 (총 '+score+'/'+URLS.length+')';
+    } else {
+      $('#s5next2').disabled=false;
+      $('#s5next2').textContent='다음 문제 →';
+    }
+  }
+  $('#s5real').addEventListener('click',()=>answer(true));
+  $('#s5fake').addEventListener('click',()=>answer(false));
+  $('#s5next2').addEventListener('click',()=>{
+    if(qi<URLS.length-1){qi++;}
+    else {qi=0;score=0;answered=0;$('#s5score').textContent='0 / 0';}
+    showQ();
+  });
+  showQ();
+
+  /* --- ② 메일 --- */
+  const MAILS=[
+   {name:'KB국민은행 보안센터',subj:'[긴급] 계좌 이용이 제한되었습니다. 즉시 확인하세요',
+    addr:'security@kb-secure-notice.info',spf:false,dkim:false,dmarc:false,bad:true,
+    hdr:'From: <span class="h">"KB국민은행 보안센터"</span> &lt;security@<span class="r">kb-secure-notice.info</span>&gt;\nReturn-Path: &lt;bounce@<span class="r">mail-relay-08.ru</span>&gt;\nReceived-SPF: <span class="r">fail</span> (도메인이 이 서버를 허가하지 않음)\nDKIM-Signature: <span class="r">없음</span>\nAuthentication-Results: dmarc=<span class="r">fail</span>',
+    v:'표시 이름만 은행이고 <b>실제 도메인부터 은행 것이 아닙니다.</b> 세 검사 모두 실패했습니다. 링크를 누르지 말고 삭제하세요.'},
+   {name:'네이버',subj:'새로운 기기에서 로그인되었습니다',
+    addr:'noreply@navercorp.com',spf:true,dkim:true,dmarc:true,bad:false,
+    hdr:'From: <span class="h">"네이버"</span> &lt;noreply@<span class="g">navercorp.com</span>&gt;\nReturn-Path: &lt;bounce@<span class="g">navercorp.com</span>&gt;\nReceived-SPF: <span class="g">pass</span>\nDKIM-Signature: <span class="g">pass</span> (d=navercorp.com)\nAuthentication-Results: dmarc=<span class="g">pass</span>',
+    v:'표시 이름과 실제 도메인이 일치하고 <b>세 검사를 모두 통과</b>했습니다. 다만 안심하고 링크를 누르기보다 <b>앱을 직접 열어</b> 확인하는 습관이 더 안전합니다.'},
+   {name:'인사팀',subj:'연봉계약서 확인 요청 (첨부파일)',
+    addr:'hr@ourcompany.co.kr',spf:true,dkim:false,dmarc:false,bad:true,
+    hdr:'From: <span class="h">"인사팀"</span> &lt;hr@ourcompany.co.kr&gt;\nReturn-Path: &lt;noreply@<span class="r">smtp-out-relay.net</span>&gt;\nReceived-SPF: <span class="g">pass</span> (중계 서버 기준)\nDKIM-Signature: <span class="r">fail</span> (서명 불일치)\nAuthentication-Results: dmarc=<span class="r">fail</span>',
+    v:'가장 까다로운 유형입니다. SPF는 통과했지만 <b>서명 검증(DKIM)이 실패</b>했고 Return-Path가 회사와 다릅니다. <b>사칭 가능성이 높습니다.</b> 첨부를 열기 전에 인사팀에 전화로 확인하세요.'}
+  ];
+  const mw=$('#s5mails');
+  MAILS.forEach((m,i)=>{
+    const d=document.createElement('div');
+    d.className='mail';d.tabIndex=0;
+    d.innerHTML='<div class="from">'+m.name+'</div><div class="subj">'+m.subj+'</div><div class="addr">'+m.addr+'</div>';
+    d.addEventListener('click',()=>pick(i));
+    d.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(i);}});
+    mw.appendChild(d);
+  });
+  function pick(i){
+    const m=MAILS[i];
+    $$('.mail',mw).forEach((x,k)=>x.classList.toggle('sel',k===i));
+    $('#s5hdr').innerHTML=m.hdr;
+    $('#s5auth').innerHTML=
+      '<span class="aut '+(m.spf?'pass':'fail')+'">SPF '+(m.spf?'PASS':'FAIL')+'</span>'+
+      '<span class="aut '+(m.dkim?'pass':'fail')+'">DKIM '+(m.dkim?'PASS':'FAIL')+'</span>'+
+      '<span class="aut '+(m.dmarc?'pass':'fail')+'">DMARC '+(m.dmarc?'PASS':'FAIL')+'</span>';
+    const v=$('#s5mv'); v.className='verdict show '+(m.bad?'miss':'good'); v.innerHTML=m.v;
+  }
+
+  /* --- ③ 비밀번호 재사용 --- */
+  const SITES=[{n:'쇼핑몰',ic:'🛒'},{n:'이메일',ic:'✉️'},{n:'SNS',ic:'💬'},{n:'인터넷뱅킹',ic:'🏦'},{n:'회사 계정',ic:'🏢'}];
+  let mfa=false, breached=false;
+  const sw=$('#s5sites');
+  SITES.forEach(s=>{
+    const d=document.createElement('div'); d.className='site';
+    d.innerHTML='<div class="ic">'+s.ic+'</div><div class="nm">'+s.n+'</div><div class="st">안전</div>';
+    sw.appendChild(d);
+  });
+  function dr(){
+    let fall=0,hold=0;
+    $$('.site',sw).forEach((d,i)=>{
+      d.classList.remove('fallen','held');
+      const st=d.querySelector('.st');
+      if(!breached){st.textContent='안전';return;}
+      if(i===0){d.classList.add('fallen');st.textContent='유출됨';fall++;return;}
+      if(mfa){d.classList.add('held');st.textContent='2차 인증에 막힘';hold++;}
+      else{d.classList.add('fallen');st.textContent='함께 뚫림';fall++;}
+    });
+    $('#s5fall').innerHTML=fall+'<span class="u"> / 5</span>';
+    $('#s5hold').innerHTML=hold+'<span class="u"> / 5</span>';
+    let n;
+    if(!breached) n='유출은 <b>내가 잘못하지 않아도</b> 일어납니다. 문제는 그 다음입니다.';
+    else if(mfa) n='쇼핑몰 비밀번호는 유출됐지만 <b>나머지 넷은 버텼습니다.</b> 비밀번호를 아무리 복잡하게 만드는 것보다 <b>2단계 인증 하나가 훨씬 효과적</b>인 이유입니다.';
+    else n='열쇠 하나가 <b>문 다섯 개를 전부</b> 열었습니다. 쇼핑몰이 털렸을 뿐인데 은행과 회사 계정까지 넘어갔습니다.';
+    $('#s5dnote').innerHTML=n;
+  }
+  $('#s5breach').addEventListener('click',()=>{breached=true;dr();});
+  $('#s5reset3').addEventListener('click',()=>{breached=false;dr();});
+  $('#s5mfa').addEventListener('change',e=>{mfa=e.target.checked;dr();});
+  dr();
+})();
+
+/* ================================================================
+   6교시
+   ================================================================ */
+(function(){
+  /* --- ① 심층 방어 --- */
+  const LAYERS=[
+   {t:'공유기 보안',d:'관리자 비밀번호 변경 + 펌웨어 최신',ic:'📶'},
+   {t:'OS 자동 업데이트',d:'알려진 취약점을 미리 막음',ic:'🛡'},
+   {t:'2단계 인증',d:'비밀번호가 새어도 한 겹 더',ic:'🔑'},
+   {t:'정기 백업',d:'막지는 못해도 되돌릴 수 있음',ic:'💾'}
+  ];
+  const ATTACKS=[
+   {n:'공유기 관리자 침입',by:0,detail:'기본 비밀번호(admin)를 그대로 둔 공유기를 노립니다.',
+    fail:'집 안 모든 기기의 통신을 들여다보고, DNS를 바꿔 <b>진짜 주소를 쳐도 가짜 사이트로</b> 보낼 수 있습니다.',
+    ok:'관리자 비밀번호가 바뀌어 있어 <b>로그인 자체가 실패</b>했습니다.'},
+   {n:'악성코드 감염',by:1,detail:'몇 달 전 패치가 나온 취약점을 그대로 노립니다.',
+    fail:'PC가 장악돼 키보드 입력과 파일이 <b>조용히 빠져나갑니다.</b>',
+    ok:'해당 취약점이 <b>이미 패치돼</b> 공격이 통하지 않았습니다.'},
+   {n:'계정 탈취',by:2,detail:'다른 사이트에서 유출된 비밀번호를 그대로 시도합니다.',
+    fail:'비밀번호가 맞아 <b>메일과 클라우드에 그대로 로그인</b>됐습니다.',
+    ok:'비밀번호는 맞았지만 <b>2차 인증 코드가 없어</b> 들어오지 못했습니다.'},
+   {n:'랜섬웨어',by:3,mitigate:true,detail:'파일을 전부 암호화하고 돈을 요구합니다.',
+    fail:'가족사진과 업무 파일이 <b>전부 잠겼습니다.</b> 돈을 내도 복구된다는 보장이 없습니다.',
+    ok:'파일은 잠겼지만 <b>백업이 있어 되돌렸습니다.</b> 백업은 공격을 막지 못하지만 <b>피해를 되돌립니다.</b>'}
+  ];
+  let onOff=[true,true,true,true], atk=null, seq=null; const tried=new Set();
+  const lw=$('#s6layers');
+  LAYERS.forEach((l,i)=>{
+    const d=document.createElement('div'); d.className='lay';
+    d.innerHTML='<span class="ic">'+l.ic+'</span><span><span class="t">'+l.t+'</span><br><span class="d">'+l.d+'</span></span>'+
+      '<label class="toggle sw"><input type="checkbox" checked data-i="'+i+'"> 켬</label>';
+    lw.appendChild(d);
+  });
+  $$('#s6layers input').forEach(inp=>inp.addEventListener('change',e=>{
+    onOff[+e.target.dataset.i]=e.target.checked; paintLayers(); 
+  }));
+  function paintLayers(hitIdx,stopped){
+    $$('.lay',lw).forEach((d,i)=>{
+      d.classList.toggle('off',!onOff[i]);
+      d.classList.remove('stop','pass');
+      if(hitIdx!=null){
+        if(i<hitIdx) d.classList.add('pass');
+        if(i===hitIdx&&stopped) d.classList.add('stop');
+      }
+    });
+  }
+  const aw=$('#s6attacks');
+  ATTACKS.forEach((a,i)=>{
+    const b=document.createElement('button');
+    b.className='dest';b.type='button';b.setAttribute('aria-pressed','false');
+    b.innerHTML='⚔ '+a.n+'<small>'+a.detail+'</small>';
+    b.addEventListener('click',()=>run(i,b));
+    aw.appendChild(b);
+  });
+  function run(i,btn){
+    if(seq) clearTimeout(seq);
+    atk=i; $$('.dest',aw).forEach(x=>x.setAttribute('aria-pressed','false'));
+    btn.setAttribute('aria-pressed','true');
+    const a=ATTACKS[i], blocked=onOff[a.by];
+    paintLayers();
+    $('#s6v').className='verdict';
+    let step=0;
+    (function tick(){
+      $('#s6line').innerHTML='⚔ '+a.n+' → '+(step<=a.by?LAYERS[step].t+' 통과 시도…':'');
+      paintLayers(step,false);
+      if(step<a.by){ step++; seq=setTimeout(tick,520); return; }
+      paintLayers(a.by,blocked);
+      const v=$('#s6v');
+      tried.add(i);
+      if(blocked){
+        v.className='verdict show '+(a.mitigate?'mid':'good');
+        v.innerHTML='<b>'+LAYERS[a.by].t+'</b>에서 '+(a.mitigate?'복구했습니다. ':'막았습니다. ')+a.ok;
+        $('#s6line').innerHTML='⚔ '+a.n+' → <span style="color:#1F7A55">'+LAYERS[a.by].t+'에서 '+(a.mitigate?'복구':'차단')+'</span>';
+      }else{
+        v.className='verdict show miss';
+        v.innerHTML='<b>'+LAYERS[a.by].t+'</b>이(가) 꺼져 있어 그대로 통과했습니다. '+a.fail;
+        $('#s6line').innerHTML='⚔ '+a.n+' → <span style="color:#C0433C">침해 성공</span>';
+      }
+      $('#s6note').innerHTML = tried.size<4
+        ? '지금까지 시험한 공격 <b>'+tried.size+' / 4</b>. 네 가지를 모두 해봐야 오늘의 결론이 보입니다.'
+        : '네 가지를 모두 시험했습니다. <b>공격마다 막아 준 겹이 전부 달랐습니다.</b> 그래서 한 겹만 골라 쌓을 수는 없습니다. 그리고 백업은 <b>막지 못해도 되돌립니다.</b>';
+      seq=null;
+    })();
+  }
+  paintLayers();
+  lifecycle['s6']={leave:()=>{if(seq){clearTimeout(seq);seq=null;}}};
+
+  /* --- ② 체크리스트 --- */
+  const CHK=[
+   ['공유기 관리자 비밀번호를 기본값에서 바꿨다','admin/admin을 그대로 쓰는 집이 아직 많습니다'],
+   ['공유기 펌웨어를 최신으로 올렸다','제조사 앱이나 관리 페이지에서 확인'],
+   ['와이파이 암호화가 WPA2 이상이다','WEP·개방형이면 즉시 변경'],
+   ['공유기 원격관리(외부 접속)를 껐다','밖에서 관리할 일이 없다면 끄는 게 정답'],
+   ['불필요한 포트포워딩·UPnP를 껐다','4교시에서 본 그 설정입니다'],
+   ['손님용 게스트 와이파이를 분리했다','손님 기기가 집 안 기기에 닿지 않게'],
+   ['OS 자동 업데이트가 켜져 있다','가장 값싸고 효과 큰 한 가지'],
+   ['브라우저를 최신 버전으로 쓴다','대부분의 공격이 브라우저를 거칩니다'],
+   ['주요 계정에 2단계 인증을 켰다','메일 계정부터 켜세요. 다른 계정 복구의 관문입니다'],
+   ['비밀번호를 사이트마다 다르게 쓴다','외우기 어렵다면 비밀번호 관리자를 쓰세요'],
+   ['중요한 파일을 백업해 둔다','랜섬웨어에 대한 사실상 유일한 대비책'],
+   ['공용 와이파이에서 금융·로그인을 피한다','3교시에서 본 그 상황입니다']
+  ];
+  const cw=$('#s6chk'); let doneN=0;
+  CHK.forEach((c,i)=>{
+    const l=document.createElement('label'); l.className='chk';
+    l.innerHTML='<input type="checkbox"><span><span class="t">'+c[0]+'</span><br><span class="d">'+c[1]+'</span></span>';
+    l.querySelector('input').addEventListener('change',e=>{
+      l.classList.toggle('done',e.target.checked); upd();
+    });
+    cw.appendChild(l);
+  });
+  function upd(){
+    doneN=$$('#s6chk input').filter(i=>i.checked).length;
+    $('#s6done').innerHTML=doneN+'<span class="u"> / 12</span>';
+    $('#s6bar').style.width=(doneN/12*100)+'%';
+    let g,col;
+    if(doneN<=3){g='위험';col='#C0433C';}
+    else if(doneN<=7){g='미흡';col='#A87708';}
+    else if(doneN<=10){g='양호';col='#0E7C86';}
+    else {g='우수';col='#1F7A55';}
+    $('#s6grade').textContent=g; $('#s6grade').style.color=col; $('#s6bar').style.background=col;
+    $('#s6cnote').innerHTML = doneN===0
+      ? '체크는 이 화면에만 남고 어디에도 저장되지 않습니다. 수업 중에 <b>실제로 설정을 열어 보고</b> 체크하세요.'
+      : '남은 '+(12-doneN)+'개 중 <b>7번(자동 업데이트)과 9번(2단계 인증)</b>이 있다면 그 둘부터 하세요. 가장 값싸고 효과가 큽니다.';
+  }
+  upd();
+
+  /* --- ③ 사고 대응 --- */
+  const OPTS=[
+   {t:'컴퓨터를 껐다가 다시 켠다',s:'익숙한 대처',right:false,
+    fb:'재부팅하면 <b>메모리에 남아 있던 단서가 사라지고</b>, 경우에 따라 암호화가 오히려 계속 진행됩니다.'},
+   {t:'랜선을 뽑고 와이파이를 끈다',s:'네트워크에서 분리',right:true,
+    fb:'정답입니다. 랜섬웨어는 <b>같은 네트워크의 다른 기기와 공유 폴더로 번집니다.</b> 확산 차단이 언제나 1순위입니다.'},
+   {t:'백신을 돌려 바로 치료한다',s:'감염 제거 시도',right:false,
+    fb:'이미 진행 중인 암호화를 되돌리지 못하고, <b>원인 파악에 필요한 흔적까지 지울 수 있습니다.</b> 격리 다음 순서입니다.'},
+   {t:'요구한 금액을 보낸다',s:'빠른 복구 기대',right:false,
+    fb:'복구된다는 보장이 없고, <b>돈을 낸 대상은 다시 표적이 됩니다.</b> 지불은 해결책이 아닙니다.'}
+  ];
+  const ow=$('#s6opts'); let solved=false;
+  OPTS.forEach(o=>{
+    const b=document.createElement('button');
+    b.className='opt';b.type='button';
+    b.innerHTML=o.t+'<small>'+o.s+'</small>';
+    b.addEventListener('click',()=>{
+      if(solved) return;
+      b.classList.add(o.right?'right':'wrong');
+      const v=$('#s6iv'); v.className='verdict show '+(o.right?'good':'miss'); v.innerHTML=o.fb;
+      if(o.right){
+        solved=true;
+        $$('.opt',ow).forEach(x=>{if(x!==b)x.style.opacity=.55;});
+        $('#s6order').style.display='';
+      }
+    });
+    ow.appendChild(b);
+  });
+  const ss=el('svg',{viewBox:'0 0 720 110',role:'img','aria-label':'사고 대응 4단계 순서도'});
+  $('#s6steps').appendChild(ss);
+  [['1','격리','랜선·와이파이 끄기'],['2','기록','화면을 사진으로'],['3','신고','KISA 118'],['4','복구','백업에서 되돌리기']]
+   .forEach((s,i)=>{
+    const x=30+i*172;
+    ss.appendChild(el('rect',{x:x,y:26,width:150,height:52,rx:11,fill:'#fff',stroke:'#1F7A55','stroke-width':2}));
+    ss.appendChild(el('circle',{cx:x+22,cy:52,r:13,fill:'#1F7A55'}));
+    ss.appendChild(el('text',{x:x+22,y:57,'text-anchor':'middle','font-size':12,fill:'#fff','font-weight':700,'font-family':'IBM Plex Mono, monospace'},s[0]));
+    ss.appendChild(el('text',{x:x+44,y:48,'font-size':13,'font-weight':600,fill:'#101A2E'},s[1]));
+    ss.appendChild(el('text',{x:x+44,y:65,'font-size':10,fill:'#7B8699'},s[2]));
+    if(i<3) ss.appendChild(el('text',{x:x+160,y:58,'font-size':16,fill:'#AEB9CB'},'→'));
+  });
+})();
+
+go(0);
+})();
+</script>
+</body>
+</html>
