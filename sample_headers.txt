@@ -1,0 +1,20 @@
+=== 1. KB국민은행 보안센터를 사칭한 메일
+From: "KB국민은행 보안센터" <security@kb-secure-notice.info>
+Return-Path: <bounce@mail-relay-08.example>
+Subject: [긴급] 계좌 이용이 제한되었습니다
+Received-SPF: fail (도메인이 이 서버를 허가하지 않음)
+Authentication-Results: mx.example.com; dkim=none; dmarc=fail
+
+=== 2. 정상적인 알림 메일
+From: "네이버" <noreply@navercorp.com>
+Return-Path: <bounce@navercorp.com>
+Subject: 새로운 기기에서 로그인되었습니다
+Received-SPF: pass (도메인이 이 서버를 허가함)
+Authentication-Results: mx.example.com; dkim=pass header.d=navercorp.com; dmarc=pass
+
+=== 3. 사내 인사팀을 사칭한 메일 (가장 까다로운 유형)
+From: "인사팀" <hr@ourcompany.co.kr>
+Return-Path: <noreply@smtp-out-relay.example>
+Subject: 연봉계약서 확인 요청 (첨부파일)
+Received-SPF: pass (중계 서버 기준)
+Authentication-Results: mx.example.com; dkim=fail (서명 불일치); dmarc=fail
